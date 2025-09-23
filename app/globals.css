@@ -1,0 +1,353 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Cores atualizadas para design do menu conforme design brief */
+  /* Atualizando cores para sistema de precificação automática */
+  --background: #ffffff;
+  --foreground: #374151;
+  --card: #fff7ed;
+  --card-foreground: #374151;
+  --popover: #ffffff;
+  --popover-foreground: #374151;
+  --primary: #ea580c;
+  --primary-foreground: #ffffff;
+  --secondary: #f97316;
+  --secondary-foreground: #ffffff;
+  --muted: #fff7ed;
+  --muted-foreground: #4b5563;
+  --accent: #dc2626;
+  --accent-foreground: #ffffff;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #e5e7eb;
+  --input: #f9fafb;
+  --ring: rgba(234, 88, 12, 0.5);
+  --chart-1: #fed7aa;
+  --chart-2: #fdba74;
+  --chart-3: #fb923c;
+  --chart-4: #f97316;
+  --chart-5: #ea580c;
+  --radius: 0.5rem;
+  --sidebar: #fff7ed;
+  --sidebar-foreground: #374151;
+  --sidebar-primary: #ea580c;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f97316;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #e5e7eb;
+  --sidebar-ring: rgba(234, 88, 12, 0.5);
+}
+
+.dark {
+  --background: #0f172a;
+  --foreground: #f1f5f9;
+  --card: #1e293b;
+  --card-foreground: #f1f5f9;
+  --popover: #0f172a;
+  --popover-foreground: #f1f5f9;
+  --primary: #f97316;
+  --primary-foreground: #0f172a;
+  --secondary: #ea580c;
+  --secondary-foreground: #ffffff;
+  --muted: #1e293b;
+  --muted-foreground: #64748b;
+  --accent: #dc2626;
+  --accent-foreground: #ffffff;
+  --destructive: #ef4444;
+  --destructive-foreground: #f1f5f9;
+  --border: #334155;
+  --input: #1e293b;
+  --ring: rgba(249, 115, 22, 0.5);
+  --chart-1: #f97316;
+  --chart-2: #ea580c;
+  --chart-3: #dc2626;
+  --chart-4: #b91c1c;
+  --chart-5: #991b1b;
+  --sidebar: #1e293b;
+  --sidebar-foreground: #f1f5f9;
+  --sidebar-primary: #f97316;
+  --sidebar-primary-foreground: #0f172a;
+  --sidebar-accent: #1e293b;
+  --sidebar-accent-foreground: #f1f5f9;
+  --sidebar-border: #334155;
+  --sidebar-ring: rgba(249, 115, 22, 0.5);
+}
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Estilos premium para menu estilo iFood */
+.ifood-hero {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.category-section {
+  scroll-margin-top: 120px;
+}
+
+.sticky-category-nav {
+  backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.95);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+.highlights-carousel {
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.highlights-carousel::-webkit-scrollbar {
+  display: none;
+}
+
+.product-card-ifood {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid var(--border);
+  background: var(--card);
+}
+
+.product-card-ifood:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(234, 88, 12, 0.15);
+  border-color: var(--primary);
+}
+
+.promotion-badge {
+  background: linear-gradient(45deg, #ef4444, #f97316);
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.promotion-badge::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  animation: shine 2s infinite;
+}
+
+@keyframes shine {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+.modal-ifood {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-image-container {
+  position: relative;
+  height: 280px;
+  overflow: hidden;
+}
+
+.modal-image-container img {
+  transition: transform 0.3s ease;
+}
+
+.modal-image-container:hover img {
+  transform: scale(1.05);
+}
+
+.category-filter-pills {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding: 1rem 0;
+}
+
+.category-filter-pills::-webkit-scrollbar {
+  display: none;
+}
+
+.category-pill {
+  flex-shrink: 0;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--foreground);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.category-pill.active {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border-color: var(--primary);
+}
+
+.category-pill:hover:not(.active) {
+  background: var(--muted);
+  border-color: var(--primary);
+}
+
+.price-highlight {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  font-weight: 600;
+}
+
+.discount-price {
+  color: var(--muted-foreground);
+  text-decoration: line-through;
+  font-size: 0.875rem;
+}
+
+/* Estilos existentes mantidos */
+.delivery-hero {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+}
+
+.product-card {
+  transition: all 0.3s ease;
+  border: 1px solid var(--border);
+}
+
+.product-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(234, 88, 12, 0.15);
+}
+
+.category-badge {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.price-tag {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.cart-item {
+  transition: all 0.2s ease;
+}
+
+.cart-item:hover {
+  background: var(--muted);
+}
+
+.status-preparing {
+  background: #fbbf24;
+  color: #92400e;
+}
+
+.status-ready {
+  background: #10b981;
+  color: #065f46;
+}
+
+.status-delivered {
+  background: #6b7280;
+  color: #374151;
+}
+
+.banner-overlay {
+  background: linear-gradient(45deg, rgba(220, 38, 38, 0.9), rgba(249, 115, 22, 0.8));
+}
+
+/* Adicionado estilo para overlay de loja fechada */
+.store-closed-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  z-index: 10;
+}
+
+.store-closed-text {
+  background: rgba(220, 38, 38, 0.9);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.product-card-disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.product-card-disabled:hover {
+  transform: none;
+  box-shadow: none;
+}

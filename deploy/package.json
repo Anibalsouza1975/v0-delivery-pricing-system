@@ -1,0 +1,16 @@
+{
+  "name": "cartago-delivery-system",
+  "version": "1.0.0",
+  "description": "Sistema de Precificação e Auto Atendimento - Cartago Burger Grill",
+  "scripts": {
+    "build": "next build",
+    "export": "next export",
+    "start": "next start",
+    "dev": "next dev"
+  },
+  "dependencies": {
+    "next": "^14.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  }
+}
