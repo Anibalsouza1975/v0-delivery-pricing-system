@@ -9,10 +9,6 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  output: 'standalone',
-  experimental: {
-    outputFileTracingRoot: undefined,
-  },
   trailingSlash: false,
   assetPrefix: process.env.NODE_ENV === 'production' ? '' : '',
 }

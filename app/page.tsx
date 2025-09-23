@@ -251,6 +251,8 @@ export default function DeliveryPricingSystem() {
   const { getTotalCustosFixos, produtos, getTotalCustosVariaveis, insumos, bebidas, combos, vendas, estoqueInsumos } =
     usePricing()
 
+  console.log("[v0] Component rendered, activeModule:", activeModule)
+
   const totalVendas = vendas?.reduce((acc, venda) => acc + venda.total, 0) || 0
   const vendasHoje =
     vendas?.filter((venda) => {
@@ -258,7 +260,14 @@ export default function DeliveryPricingSystem() {
       return new Date(venda.data).toDateString() === hoje
     }).length || 0
 
+  const handleModuleClick = (moduleId: string) => {
+    console.log("[v0] Module clicked:", moduleId)
+    setActiveModule(moduleId)
+    console.log("[v0] Active module set to:", moduleId)
+  }
+
   const renderModuleContent = () => {
+    console.log("[v0] Rendering module content for:", activeModule)
     switch (activeModule) {
       case "dashboard-executivo":
         return <DashboardExecutivoModule />
@@ -328,7 +337,10 @@ export default function DeliveryPricingSystem() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setActiveModule("data-management")}
+                onClick={() => {
+                  console.log("[v0] Data management button clicked")
+                  setActiveModule("data-management")
+                }}
                 className="flex items-center gap-2"
               >
                 <Settings className="h-4 w-4" />
@@ -430,7 +442,10 @@ export default function DeliveryPricingSystem() {
                   <Card
                     key={module.id}
                     className="cursor-pointer hover:shadow-lg transition-shadow duration-200"
-                    onClick={() => setActiveModule(module.id)}
+                    onClick={() => {
+                      console.log("[v0] Card clicked for module:", module.id)
+                      handleModuleClick(module.id)
+                    }}
                   >
                     <CardHeader>
                       <div className="flex items-center space-x-2">
@@ -442,7 +457,15 @@ export default function DeliveryPricingSystem() {
                     </CardHeader>
                     <CardContent>
                       <CardDescription className="text-sm leading-relaxed">{module.description}</CardDescription>
-                      <Button className="w-full mt-4 bg-transparent" variant="outline">
+                      <Button
+                        className="w-full mt-4 bg-transparent"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          console.log("[v0] Button clicked for module:", module.id)
+                          handleModuleClick(module.id)
+                        }}
+                      >
                         Acessar Módulo
                       </Button>
                     </CardContent>
@@ -459,7 +482,13 @@ export default function DeliveryPricingSystem() {
                   ? "Gerenciamento de Dados"
                   : modules.find((m) => m.id === activeModule)?.title}
               </h2>
-              <Button variant="outline" onClick={() => setActiveModule(null)}>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  console.log("[v0] Back button clicked")
+                  setActiveModule(null)
+                }}
+              >
                 Voltar ao Dashboard
               </Button>
             </div>
