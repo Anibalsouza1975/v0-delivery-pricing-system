@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { usePricing } from "@/components/pricing-context"
+import { useDatabasePricing } from "@/components/database-pricing-context"
 import { TrendingUp, AlertTriangle, DollarSign, BarChart3 } from "lucide-react"
 
 export default function RelacaoProdutos() {
-  const { produtos, bebidas, combos, insumos, custosFixos, custosVariaveis, calculateCMV } = usePricing()
+  const { produtos, bebidas, combos, insumos, custosFixos, custosVariaveis, calculateCMV } = useDatabasePricing()
   const [selectedCategory, setSelectedCategory] = useState<"todos" | "produtos" | "bebidas" | "combos">("todos")
 
   // Calcular total de custos fixos mensais

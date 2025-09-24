@@ -18,30 +18,36 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { usePricing } from "@/components/pricing-context"
-import { Download, Upload, Trash2, Database, AlertTriangle, CheckCircle } from "lucide-react"
+import { useDatabasePricing } from "@/components/database-pricing-context"
+import { Download, Upload, Trash2, Database, AlertTriangle, CheckCircle, TestTube } from "lucide-react"
+import DatabaseTest from "@/components/database-test"
 
 export default function DataManagement() {
-  const { exportData, importData, clearAllData } = usePricing()
+  const { refreshData } = useDatabasePricing()
   const [importText, setImportText] = useState("")
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false)
+  const [showDatabaseTest, setShowDatabaseTest] = useState(false)
   const [alert, setAlert] = useState<{ type: "success" | "error"; message: string } | null>(null)
 
   const handleExport = () => {
     try {
-      const data = exportData()
-      const blob = new Blob([data], { type: "application/json" })
+      const data = {
+        message: "Exportação de dados do banco Supabase não implementada ainda",
+        timestamp: new Date().toISOString(),
+        note: "Os dados agora estão no banco de dados Supabase e podem ser acessados diretamente",
+      }
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = `delivery-pricing-backup-${new Date().toISOString().split("T")[0]}.json`
+      a.download = `delivery-pricing-database-info-${new Date().toISOString().split("T")[0]}.json`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
 
-      setAlert({ type: "success", message: "Dados exportados com sucesso!" })
+      setAlert({ type: "success", message: "Informações do banco exportadas!" })
       setTimeout(() => setAlert(null), 3000)
     } catch (error) {
       setAlert({ type: "error", message: "Erro ao exportar dados." })
@@ -56,18 +62,10 @@ export default function DataManagement() {
       return
     }
 
-    console.log("[v0] Iniciando importação de dados...")
-
-    const success = importData(importText)
-    if (success) {
-      setAlert({ type: "success", message: "Dados importados com sucesso!" })
-      setImportText("")
-      setIsImportDialogOpen(false)
-      console.log("[v0] Dados importados com sucesso")
-    } else {
-      setAlert({ type: "error", message: "Erro ao importar dados. Verifique o formato." })
-      console.log("[v0] Erro ao importar dados")
-    }
+    setAlert({
+      type: "error",
+      message: "Importação para banco Supabase não implementada ainda. Use a interface para adicionar dados.",
+    })
     setTimeout(() => setAlert(null), 3000)
   }
 
@@ -85,10 +83,23 @@ export default function DataManagement() {
   }
 
   const handleClearData = () => {
-    clearAllData()
-    setAlert({ type: "success", message: "Todos os dados foram removidos." })
+    setAlert({
+      type: "error",
+      message: "Limpeza de dados do banco Supabase deve ser feita com cuidado. Use o painel do Supabase.",
+    })
     setIsClearDialogOpen(false)
     setTimeout(() => setAlert(null), 3000)
+  }
+
+  const handleRefreshData = async () => {
+    try {
+      await refreshData()
+      setAlert({ type: "success", message: "Dados atualizados do banco de dados!" })
+      setTimeout(() => setAlert(null), 3000)
+    } catch (error) {
+      setAlert({ type: "error", message: "Erro ao atualizar dados do banco." })
+      setTimeout(() => setAlert(null), 3000)
+    }
   }
 
   return (
@@ -110,24 +121,60 @@ export default function DataManagement() {
       {/* Header */}
       <div>
         <h3 className="text-lg font-semibold">Gerenciamento de Dados</h3>
-        <p className="text-sm text-muted-foreground">Faça backup, restaure ou limpe os dados do sistema</p>
+        <p className="text-sm text-muted-foreground">Gerencie dados do banco Supabase e teste a integração</p>
       </div>
 
+      {/* Database Test Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TestTube className="h-5 w-5 text-purple-600" />
+            Teste de Integração
+          </CardTitle>
+          <CardDescription>Teste a conexão e operações com o banco de dados Supabase</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button onClick={() => setShowDatabaseTest(!showDatabaseTest)} variant="outline" className="w-full">
+            <TestTube className="h-4 w-4 mr-2" />
+            {showDatabaseTest ? "Ocultar Testes" : "Mostrar Testes de Banco"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {showDatabaseTest && <DatabaseTest />}
+
       {/* Cards de ações */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        {/* Atualizar dados */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Database className="h-5 w-5 text-blue-600" />
+              Atualizar Dados
+            </CardTitle>
+            <CardDescription>Recarregue os dados mais recentes do banco</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={handleRefreshData} className="w-full">
+              <Database className="h-4 w-4 mr-2" />
+              Atualizar
+            </Button>
+          </CardContent>
+        </Card>
+
         {/* Exportar dados */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Download className="h-5 w-5 text-blue-600" />
-              Exportar Dados
+              <Download className="h-5 w-5 text-green-600" />
+              Exportar Info
             </CardTitle>
-            <CardDescription>Faça backup de todos os seus dados em um arquivo JSON</CardDescription>
+            <CardDescription>Baixe informações sobre o banco de dados</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={handleExport} className="w-full">
+            <Button onClick={handleExport} variant="outline" className="w-full bg-transparent">
               <Download className="h-4 w-4 mr-2" />
-              Baixar Backup
+              Baixar Info
             </Button>
           </CardContent>
         </Card>
@@ -136,24 +183,24 @@ export default function DataManagement() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Upload className="h-5 w-5 text-green-600" />
+              <Upload className="h-5 w-5 text-orange-600" />
               Importar Dados
             </CardTitle>
-            <CardDescription>Restaure seus dados a partir de um backup</CardDescription>
+            <CardDescription>Funcionalidade em desenvolvimento</CardDescription>
           </CardHeader>
           <CardContent>
             <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline" className="w-full bg-transparent">
+                <Button variant="outline" className="w-full bg-transparent" disabled>
                   <Upload className="h-4 w-4 mr-2" />
-                  Restaurar Backup
+                  Em Desenvolvimento
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
                   <DialogTitle>Importar Dados</DialogTitle>
                   <DialogDescription>
-                    Cole o conteúdo do arquivo de backup ou selecione um arquivo para importar.
+                    Esta funcionalidade será implementada para migração de dados para o Supabase.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
@@ -197,30 +244,27 @@ export default function DataManagement() {
               <Trash2 className="h-5 w-5 text-red-600" />
               Limpar Dados
             </CardTitle>
-            <CardDescription>Remove todos os dados do sistema (ação irreversível)</CardDescription>
+            <CardDescription>Use o painel do Supabase para gerenciar dados</CardDescription>
           </CardHeader>
           <CardContent>
             <Dialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant="destructive" className="w-full">
+                <Button variant="destructive" className="w-full" disabled>
                   <Trash2 className="h-4 w-4 mr-2" />
-                  Limpar Tudo
+                  Via Supabase
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Confirmar Limpeza</DialogTitle>
+                  <DialogTitle>Limpeza de Dados</DialogTitle>
                   <DialogDescription>
-                    Esta ação irá remover permanentemente todos os dados do sistema: custos fixos, custos variáveis,
-                    insumos, produtos, bebidas e combos. Esta ação não pode ser desfeita.
+                    Para limpar dados do banco Supabase, acesse o painel administrativo do Supabase diretamente. Isso
+                    garante maior segurança na manipulação dos dados.
                   </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setIsClearDialogOpen(false)}>
-                    Cancelar
-                  </Button>
-                  <Button variant="destructive" onClick={handleClearData}>
-                    Sim, Limpar Tudo
+                    Entendi
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -234,35 +278,43 @@ export default function DataManagement() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Database className="h-5 w-5" />
-            Sobre a Persistência de Dados
+            Sobre o Banco de Dados Supabase
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex items-start gap-3">
             <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
             <div>
-              <p className="font-medium">Salvamento Automático</p>
+              <p className="font-medium">Persistência Real</p>
               <p className="text-sm text-muted-foreground">
-                Todos os dados são salvos automaticamente no navegador enquanto você trabalha.
+                Todos os dados agora são salvos em um banco de dados PostgreSQL real via Supabase.
               </p>
             </div>
           </div>
           <div className="flex items-start gap-3">
             <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
             <div>
-              <p className="font-medium">Backup e Restauração</p>
+              <p className="font-medium">Sincronização Automática</p>
               <p className="text-sm text-muted-foreground">
-                Exporte seus dados para fazer backup e importe quando necessário.
+                Os dados são sincronizados automaticamente entre diferentes dispositivos e sessões.
               </p>
             </div>
           </div>
           <div className="flex items-start gap-3">
-            <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
+            <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
             <div>
-              <p className="font-medium">Limitações do Navegador</p>
+              <p className="font-medium">Backup Automático</p>
               <p className="text-sm text-muted-foreground">
-                Os dados são armazenados localmente no seu navegador. Limpar dados do navegador ou usar modo privado
-                pode resultar em perda de dados.
+                O Supabase faz backup automático dos seus dados, garantindo maior segurança.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <Database className="h-5 w-5 text-blue-600 mt-0.5" />
+            <div>
+              <p className="font-medium">Escalabilidade</p>
+              <p className="text-sm text-muted-foreground">
+                O sistema agora pode crescer com seu negócio, suportando muito mais dados e usuários.
               </p>
             </div>
           </div>

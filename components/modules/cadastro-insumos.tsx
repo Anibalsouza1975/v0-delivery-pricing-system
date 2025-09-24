@@ -19,7 +19,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { usePricing } from "@/components/pricing-context"
+import { useDatabasePricing } from "@/components/database-pricing-context"
 import { Plus, Edit, Trash2, Package } from "lucide-react"
 import type { Insumo } from "@/app/page"
 
@@ -43,7 +43,7 @@ const categoriasInsumo = [
 const unidadesUso = ["g", "ml", "cm", "unidade", "fatia", "porção", "pacote", "lata", "garrafa", "caixa", "fardo"]
 
 export default function CadastroInsumosModule() {
-  const { insumos, addInsumo, updateInsumo, deleteInsumo, ingredientesBase } = usePricing()
+  const { insumos, addInsumo, updateInsumo, deleteInsumo, ingredientesBase } = useDatabasePricing()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingInsumo, setEditingInsumo] = useState<Insumo | null>(null)
   const [formData, setFormData] = useState({

@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { usePricing } from "@/components/pricing-context"
+import { useDatabasePricing } from "@/components/database-pricing-context"
 import {
   Search,
   Plus,
@@ -60,7 +60,7 @@ interface Personalizacao {
 }
 
 export default function MenuClientesModule() {
-  const { produtos, bebidas, combos, adicionais, personalizacoes } = usePricing()
+  const { produtos, bebidas, combos, adicionais, personalizacoes } = useDatabasePricing()
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("Todos")
 
@@ -287,7 +287,7 @@ export default function MenuClientesModule() {
 
   const getCartTotal = () => {
     return Object.entries(cart).reduce((total, [cartKey, cartItem]) => {
-      const itemId = cartItem.originalItemId || cartKey.split("|")[0]
+      const itemId = cartItem.originalItemId || cartKey.split("-")[0]
       const item = allMenuItems.find((i) => `${i.type}-${i.id}` === itemId)
 
       if (item) {

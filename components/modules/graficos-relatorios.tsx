@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { usePricing } from "@/components/pricing-context"
+import { useDatabasePricing } from "@/components/database-pricing-context"
 import { BarChart3, TrendingUp, DollarSign, Target, PiIcon as PieIcon, Activity } from "lucide-react"
 import {
   BarChart,
@@ -31,7 +31,7 @@ export default function GraficosRelatoriosModule() {
     insumos,
     getTotalCustosFixos,
     getTotalCustosVariaveis,
-  } = usePricing()
+  } = useDatabasePricing()
 
   // Dados para gráficos
   const totalCustosFixos = getTotalCustosFixos()

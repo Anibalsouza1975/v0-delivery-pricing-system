@@ -19,7 +19,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { usePricing } from "@/components/pricing-context"
+import { useDatabasePricing } from "@/components/database-pricing-context"
 import { Plus, Edit, Trash2, Calculator } from "lucide-react"
 import type { CustoFixo } from "@/app/page"
 
@@ -38,14 +38,17 @@ const categoriasCustoFixo = [
   "Outros",
 ]
 
+const frequenciasCustoFixo = ["Mensal", "Anual", "Trimestral", "Semestral", "Semanal", "Diário"]
+
 export default function CustosFixosModule() {
-  const { custosFixos, addCustoFixo, updateCustoFixo, deleteCustoFixo, getTotalCustosFixos } = usePricing()
+  const { custosFixos, addCustoFixo, updateCustoFixo, deleteCustoFixo, getTotalCustosFixos } = useDatabasePricing()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingCusto, setEditingCusto] = useState<CustoFixo | null>(null)
   const [formData, setFormData] = useState({
     nome: "",
     valor: "",
     categoria: "",
+    frequencia: "Mensal", // Default to monthly
   })
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -55,7 +58,10 @@ export default function CustosFixosModule() {
       nome: formData.nome,
       valor: Number.parseFloat(formData.valor),
       categoria: formData.categoria,
+      frequencia: formData.frequencia,
     }
+
+    console.log("[v0] Submitting fixed cost data:", custoData)
 
     if (editingCusto) {
       updateCustoFixo(editingCusto.id, custoData)
@@ -63,7 +69,7 @@ export default function CustosFixosModule() {
       addCustoFixo(custoData)
     }
 
-    setFormData({ nome: "", valor: "", categoria: "" })
+    setFormData({ nome: "", valor: "", categoria: "", frequencia: "Mensal" })
     setEditingCusto(null)
     setIsDialogOpen(false)
   }
@@ -74,6 +80,7 @@ export default function CustosFixosModule() {
       nome: custo.nome,
       valor: custo.valor.toString(),
       categoria: custo.categoria,
+      frequencia: custo.frequencia,
     })
     setIsDialogOpen(true)
   }
@@ -138,7 +145,7 @@ export default function CustosFixosModule() {
             <Button
               onClick={() => {
                 setEditingCusto(null)
-                setFormData({ nome: "", valor: "", categoria: "" })
+                setFormData({ nome: "", valor: "", categoria: "", frequencia: "Mensal" })
               }}
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -184,7 +191,26 @@ export default function CustosFixosModule() {
                   </Select>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="valor">Valor Mensal (R$)</Label>
+                  <Label htmlFor="frequencia">Frequência</Label>
+                  <Select
+                    value={formData.frequencia}
+                    onValueChange={(value) => setFormData({ ...formData, frequencia: value })}
+                    required
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a frequência" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {frequenciasCustoFixo.map((frequencia) => (
+                        <SelectItem key={frequencia} value={frequencia}>
+                          {frequencia}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="valor">Valor (R$)</Label>
                   <Input
                     id="valor"
                     type="number"
@@ -220,7 +246,8 @@ export default function CustosFixosModule() {
                 <TableRow>
                   <TableHead>Nome</TableHead>
                   <TableHead>Categoria</TableHead>
-                  <TableHead className="text-right">Valor Mensal</TableHead>
+                  <TableHead>Frequência</TableHead>
+                  <TableHead className="text-right">Valor</TableHead>
                   <TableHead className="text-right">Valor Diário</TableHead>
                   <TableHead className="text-center">Ações</TableHead>
                 </TableRow>
@@ -231,6 +258,9 @@ export default function CustosFixosModule() {
                     <TableCell className="font-medium">{custo.nome}</TableCell>
                     <TableCell>
                       <Badge variant="secondary">{custo.categoria}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{custo.frequencia}</Badge>
                     </TableCell>
                     <TableCell className="text-right font-mono">
                       {custo.valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}

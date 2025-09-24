@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { usePricing } from "@/components/pricing-context"
+import { useDatabasePricing } from "@/components/database-pricing-context"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -76,7 +76,7 @@ const fichasTecnicas = [
 
 export default function PrecificacaoAutomaticaModule() {
   const { produtos, ingredientesBase, estoqueInsumos, insumos, getTotalCustosFixos, getEstoqueAtual, getValorEstoque } =
-    usePricing()
+    useDatabasePricing()
 
   const [custosCalculados, setCustosCalculados] = useState<CustoCalculado[]>([])
   const [produtoSelecionado, setProdutoSelecionado] = useState<string>("")
@@ -350,7 +350,7 @@ export default function PrecificacaoAutomaticaModule() {
     let precoUnitarioReal = ingredienteBase.precoUnitario
 
     if (estoquesIngrediente.length > 0) {
-      const totalQuantidade = estoquesIngrediente.reduce((sum, e) => sum + e.quantidadeAtual, 0)
+      const totalQuantidade = estoquesIngrediente.reduce((sum, e) => sum + e.quantidadeComprada, 0)
       const valorTotal = estoquesIngrediente.reduce((sum, e) => sum + e.precoCompra, 0)
       precoUnitarioReal = totalQuantidade > 0 ? valorTotal / totalQuantidade : ingredienteBase.precoUnitario
     }

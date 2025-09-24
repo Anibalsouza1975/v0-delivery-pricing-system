@@ -21,8 +21,10 @@ import {
   Zap,
   HelpCircle,
   MessageCircle,
+  Loader2,
+  Database,
 } from "lucide-react"
-import { usePricing } from "@/components/pricing-context"
+import { useDatabasePricing } from "@/components/database-pricing-context"
 import CustosFixosModule from "@/components/modules/custos-fixos"
 import CustosVariaveisModule from "@/components/modules/custos-variaveis"
 import CadastroInsumosModule from "@/components/modules/cadastro-insumos"
@@ -41,8 +43,11 @@ import RelacaoProdutosModule from "@/components/modules/relacao-produtos"
 import ControleEstoqueModule from "@/components/modules/controle-estoque"
 import IngredientesBaseModule from "@/components/modules/ingredientes-base"
 import PrecificacaoAutomaticaModule from "@/components/modules/precificacao-automatica"
-import AjudaTutorialModule from "@/components/modules/ajuda-tutorial" // Added import for help tutorial module
-import AutoAtendimentoWhatsAppModule from "@/components/modules/auto-atendimento-whatsapp" // Added import for WhatsApp module
+import AjudaTutorialModule from "@/components/modules/ajuda-tutorial"
+import AutoAtendimentoWhatsAppModule from "@/components/modules/auto-atendimento-whatsapp"
+import DatabaseConnectionTest from "@/components/database-connection-test"
+import DatabaseTablesList from "@/components/database-tables-list"
+import DatabaseTablesOverview from "@/components/database-tables-overview"
 
 // Tipos para o sistema
 export interface CustoFixo {
@@ -108,6 +113,13 @@ export interface Combo {
 }
 
 const modules = [
+  {
+    id: "database-test",
+    title: "Teste de Conexão BD",
+    description: "Teste a conexão com o banco de dados Cartago BD e verifique se todas as tabelas estão funcionando.",
+    icon: Database,
+    color: "bg-slate-600",
+  },
   {
     id: "dashboard-executivo",
     title: "Dashboard Executivo",
@@ -248,10 +260,8 @@ const modules = [
 
 export default function DeliveryPricingSystem() {
   const [activeModule, setActiveModule] = useState<string | null>(null)
-  const { getTotalCustosFixos, produtos, getTotalCustosVariaveis, insumos, bebidas, combos, vendas, estoqueInsumos } =
-    usePricing()
-
-  console.log("[v0] Component rendered, activeModule:", activeModule)
+  const { getTotalCustosFixos, produtos, getTotalCustosVariaveis, insumos, bebidas, combos, vendas, loading, error } =
+    useDatabasePricing()
 
   const totalVendas = vendas?.reduce((acc, venda) => acc + venda.total, 0) || 0
   const vendasHoje =
@@ -261,14 +271,19 @@ export default function DeliveryPricingSystem() {
     }).length || 0
 
   const handleModuleClick = (moduleId: string) => {
-    console.log("[v0] Module clicked:", moduleId)
     setActiveModule(moduleId)
-    console.log("[v0] Active module set to:", moduleId)
   }
 
   const renderModuleContent = () => {
-    console.log("[v0] Rendering module content for:", activeModule)
     switch (activeModule) {
+      case "database-test":
+        return (
+          <div className="space-y-6">
+            <DatabaseTablesOverview />
+            <DatabaseTablesList />
+            <DatabaseConnectionTest />
+          </div>
+        )
       case "dashboard-executivo":
         return <DashboardExecutivoModule />
       case "precificacao-automatica":
@@ -323,6 +338,33 @@ export default function DeliveryPricingSystem() {
     }
   }
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Carregando dados do sistema...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card className="max-w-md">
+          <CardHeader>
+            <CardTitle className="text-red-600">Erro ao carregar dados</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground mb-4">{error}</p>
+            <Button onClick={() => window.location.reload()}>Tentar novamente</Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -338,7 +380,6 @@ export default function DeliveryPricingSystem() {
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  console.log("[v0] Data management button clicked")
                   setActiveModule("data-management")
                 }}
                 className="flex items-center gap-2"
@@ -423,12 +464,12 @@ export default function DeliveryPricingSystem() {
                       <div className="p-2 rounded-lg bg-purple-500">
                         <Package className="h-5 w-5 text-white" />
                       </div>
-                      <CardTitle className="text-lg">Itens Estoque</CardTitle>
+                      <CardTitle className="text-lg">Ingredientes</CardTitle>
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{estoqueInsumos?.length || 0}</div>
-                    <p className="text-xs text-muted-foreground">Insumos controlados</p>
+                    <div className="text-2xl font-bold">{insumos?.length || 0}</div>
+                    <p className="text-xs text-muted-foreground">Ingredientes cadastrados</p>
                   </CardContent>
                 </Card>
               </div>
@@ -443,7 +484,6 @@ export default function DeliveryPricingSystem() {
                     key={module.id}
                     className="cursor-pointer hover:shadow-lg transition-shadow duration-200"
                     onClick={() => {
-                      console.log("[v0] Card clicked for module:", module.id)
                       handleModuleClick(module.id)
                     }}
                   >
@@ -462,7 +502,6 @@ export default function DeliveryPricingSystem() {
                         variant="outline"
                         onClick={(e) => {
                           e.stopPropagation()
-                          console.log("[v0] Button clicked for module:", module.id)
                           handleModuleClick(module.id)
                         }}
                       >
@@ -485,7 +524,6 @@ export default function DeliveryPricingSystem() {
               <Button
                 variant="outline"
                 onClick={() => {
-                  console.log("[v0] Back button clicked")
                   setActiveModule(null)
                 }}
               >

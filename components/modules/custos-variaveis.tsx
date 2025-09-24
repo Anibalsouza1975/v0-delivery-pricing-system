@@ -19,7 +19,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { usePricing } from "@/components/pricing-context"
+import { useDatabasePricing } from "@/components/database-pricing-context"
 import { Plus, Edit, Trash2, TrendingUp, Percent } from "lucide-react"
 import type { CustoVariavel } from "@/app/page"
 
@@ -38,7 +38,7 @@ const categoriasCustoVariavel = [
 
 export default function CustosVariaveisModule() {
   const { custosVariaveis, addCustoVariavel, updateCustoVariavel, deleteCustoVariavel, getTotalCustosVariaveis } =
-    usePricing()
+    useDatabasePricing()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingCusto, setEditingCusto] = useState<CustoVariavel | null>(null)
   const [formData, setFormData] = useState({

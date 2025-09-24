@@ -19,12 +19,13 @@ import {
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { usePricing } from "@/components/pricing-context"
+import { useDatabasePricing } from "@/components/database-pricing-context"
 import { Plus, Edit, Trash2, Utensils, Minus, Package } from "lucide-react"
 import type { Combo } from "@/app/page"
 
 export default function CombosModule() {
-  const { combos, produtos, bebidas, addCombo, updateCombo, deleteCombo, adicionais, personalizacoes } = usePricing()
+  const { combos, produtos, bebidas, addCombo, updateCombo, deleteCombo, adicionais, personalizacoes } =
+    useDatabasePricing()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingCombo, setEditingCombo] = useState<Combo | null>(null)
   const [configIfood, setConfigIfood] = useState({

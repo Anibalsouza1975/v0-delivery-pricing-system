@@ -2,7 +2,7 @@ import type React from "react"
 import type { Metadata } from "next"
 import { GeistSans } from "geist/font/sans"
 import { GeistMono } from "geist/font/mono"
-import { PricingProvider } from "@/components/pricing-context"
+import { DatabasePricingProvider } from "@/components/database-pricing-context"
 import { Suspense } from "react"
 import "./globals.css"
 
@@ -21,7 +21,7 @@ export default function RootLayout({
     <html lang="pt-BR">
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
         <Suspense fallback={null}>
-          <PricingProvider>{children}</PricingProvider>
+          <DatabasePricingProvider>{children}</DatabasePricingProvider>
         </Suspense>
       </body>
     </html>

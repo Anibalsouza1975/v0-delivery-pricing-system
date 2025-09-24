@@ -21,7 +21,7 @@ import {
   AlertTriangle,
   Package2,
 } from "lucide-react"
-import { usePricing } from "@/components/pricing-context"
+import { useDatabasePricing } from "@/components/database-pricing-context"
 
 interface Pedido {
   id: string
@@ -63,7 +63,8 @@ const statusConfig = {
 }
 
 export default function ControleProducaoModule() {
-  const { produtos, insumos, ingredientesBase, getEstoqueAtualIngrediente, abaterEstoquePorVenda } = usePricing()
+  const { produtos, insumos, ingredientesBase, getEstoqueAtualIngrediente, abaterEstoquePorVenda } =
+    useDatabasePricing()
 
   const [pedidos, setPedidos] = useState<Pedido[]>([])
   const [pedidosConcluidos, setPedidosConcluidos] = useState<Pedido[]>([])

@@ -18,12 +18,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { usePricing } from "@/components/pricing-context"
+import { useDatabasePricing } from "@/components/database-pricing-context"
 import { Plus, Edit, Trash2, Coffee, Percent, X } from "lucide-react"
 import type { Bebida } from "@/app/page"
 
 export default function BebidasModule() {
-  const { bebidas, addBebida, updateBebida, deleteBebida } = usePricing()
+  const { bebidas, addBebida, updateBebida, deleteBebida } = useDatabasePricing()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingBebida, setEditingBebida] = useState<Bebida | null>(null)
   const [configIfood, setConfigIfood] = useState({

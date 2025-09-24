@@ -23,7 +23,7 @@ import {
   Filter,
   AlertTriangle,
 } from "lucide-react"
-import { usePricing } from "@/components/pricing-context"
+import { useDatabasePricing } from "@/components/database-pricing-context"
 
 interface ItemVenda {
   id: string
@@ -61,7 +61,7 @@ export default function VendasModule() {
     getEstoqueAtualInsumo,
     baixarEstoquePorVenda,
     getInsumosComEstoqueBaixo,
-  } = usePricing()
+  } = useDatabasePricing()
 
   const [carrinho, setCarrinho] = useState<ItemVenda[]>([])
   const [vendas, setVendas] = useState<Venda[]>(() => {

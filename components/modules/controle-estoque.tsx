@@ -16,7 +16,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { usePricing } from "@/components/pricing-context"
+import { useDatabasePricing } from "@/components/database-pricing-context"
 import { Edit, Trash2, Package, TrendingUp, AlertTriangle, History, ShoppingCart } from "lucide-react"
 
 export default function ControleEstoque() {
@@ -29,7 +29,7 @@ export default function ControleEstoque() {
     deleteEstoqueInsumo,
     addMovimentacaoEstoque,
     getEstoqueAtualIngrediente,
-  } = usePricing()
+  } = useDatabasePricing()
 
   const [selectedTab, setSelectedTab] = useState("estoque")
   const [isCompraDialogOpen, setIsCompraDialogOpen] = useState(false)

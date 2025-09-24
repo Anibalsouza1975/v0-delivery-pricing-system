@@ -41,7 +41,7 @@ import {
   BarChart3,
   Truck,
 } from "lucide-react"
-import { usePricing } from "@/components/pricing-context"
+import { useDatabasePricing } from "@/components/database-pricing-context"
 import { Switch } from "@/components/ui/switch"
 
 interface VendaData {
@@ -145,7 +145,7 @@ interface HorarioFuncionamento {
 }
 
 export default function DashboardExecutivoModule() {
-  const { produtos, insumos, getTotalCustosFixos, getTotalCustosVariaveis } = usePricing()
+  const { produtos, insumos, getTotalCustosFixos, getTotalCustosVariaveis } = useDatabasePricing()
   const [vendas, setVendas] = useState<VendaData[]>([])
   const [pedidos, setPedidos] = useState<any[]>([])
   const [produtosLista, setProdutos] = useState<any[]>([])
