@@ -877,7 +877,9 @@ Verifique o console para mais detalhes.`)
                         >
                           {conversa.status}
                         </Badge>
-                        <p className="text-xs text-muted-foreground mt-1">{conversa.timestamp.toLocaleTimeString()}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {new Date(conversa.timestamp).toLocaleTimeString()}
+                        </p>
                       </div>
                     </div>
                   ))
