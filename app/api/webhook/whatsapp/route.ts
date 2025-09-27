@@ -19,6 +19,8 @@ export async function GET(request: NextRequest) {
   console.log("[v0] Challenge:", challenge)
   console.log("[v0] URL completa:", request.url)
   console.log("[v0] Headers:", Object.fromEntries(request.headers.entries()))
+  console.log("[v0] User-Agent:", request.headers.get("user-agent"))
+  console.log("[v0] X-Forwarded-For:", request.headers.get("x-forwarded-for"))
   console.log("[v0] ===== FIM VERIFICAÇÃO =====")
 
   if (mode === "subscribe" && token === VERIFY_TOKEN) {
@@ -40,54 +42,64 @@ export async function POST(request: NextRequest) {
     console.log("[v0] Timestamp:", new Date().toISOString())
     console.log("[v0] User-Agent:", request.headers.get("user-agent"))
     console.log("[v0] X-Hub-Signature-256:", request.headers.get("x-hub-signature-256"))
+    console.log("[v0] X-Forwarded-For:", request.headers.get("x-forwarded-for"))
+    console.log("[v0] Content-Type:", request.headers.get("content-type"))
     console.log("[v0] Headers completos:", Object.fromEntries(request.headers.entries()))
     console.log("[v0] Body completo:", JSON.stringify(body, null, 2))
 
-    // Verifica se é uma mensagem de texto
-    if (body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]) {
-      const message = body.entry[0].changes[0].value.messages[0]
-      const from = message.from // Número do cliente
-      const text = message.text?.body // Texto da mensagem
-      const messageId = message.id // ID único da mensagem
+    if (body.object === "whatsapp_business_account") {
+      console.log("[v0] ✅ Webhook do WhatsApp Business Account detectado")
 
-      console.log("[v0] Mensagem detectada - De:", from, "Texto:", text, "ID:", messageId)
+      // Verifica se é uma mensagem de texto
+      if (body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]) {
+        const message = body.entry[0].changes[0].value.messages[0]
+        const from = message.from // Número do cliente
+        const text = message.text?.body // Texto da mensagem
+        const messageId = message.id // ID único da mensagem
 
-      if (mensagensProcessadas.has(messageId)) {
-        console.log("[v0] Mensagem já processada, ignorando:", messageId)
-        return NextResponse.json({ status: "already_processed" })
-      }
+        console.log("[v0] Mensagem detectada - De:", from, "Texto:", text, "ID:", messageId)
 
-      mensagensProcessadas.add(messageId)
-
-      if (text) {
-        console.log("[v0] Processando mensagem com IA...")
-        console.log("[v0] Usando modelo Groq com contexto do Cartago Burger Grill")
-
-        // Processa mensagem com IA
-        const resposta = await processarMensagemComIA(text, from)
-        console.log("[v0] Resposta da IA gerada:", resposta)
-
-        // Envia resposta via WhatsApp
-        console.log("[v0] Enviando resposta via WhatsApp para:", from)
-        const enviado = await enviarMensagemWhatsApp(from, resposta)
-
-        if (enviado) {
-          console.log("[v0] Mensagem enviada com sucesso!")
-        } else {
-          console.log("[v0] Falha ao enviar mensagem")
+        if (mensagensProcessadas.has(messageId)) {
+          console.log("[v0] Mensagem já processada, ignorando:", messageId)
+          return NextResponse.json({ status: "already_processed" })
         }
+
+        mensagensProcessadas.add(messageId)
+
+        if (text) {
+          console.log("[v0] Processando mensagem com IA...")
+          console.log("[v0] Usando modelo Groq com contexto do Cartago Burger Grill")
+
+          // Processa mensagem com IA
+          const resposta = await processarMensagemComIA(text, from)
+          console.log("[v0] Resposta da IA gerada:", resposta)
+
+          // Envia resposta via WhatsApp
+          console.log("[v0] Enviando resposta via WhatsApp para:", from)
+          const enviado = await enviarMensagemWhatsApp(from, resposta)
+
+          if (enviado) {
+            console.log("[v0] Mensagem enviada com sucesso!")
+          } else {
+            console.log("[v0] Falha ao enviar mensagem")
+          }
+        }
+      } else {
+        console.log("[v0] Webhook recebido mas não é uma mensagem de texto")
+        console.log("[v0] Estrutura do body:", {
+          hasEntry: !!body.entry,
+          entryLength: body.entry?.length,
+          hasChanges: !!body.entry?.[0]?.changes,
+          changesLength: body.entry?.[0]?.changes?.length,
+          hasValue: !!body.entry?.[0]?.changes?.[0]?.value,
+          hasMessages: !!body.entry?.[0]?.changes?.[0]?.value?.messages,
+          messagesLength: body.entry?.[0]?.changes?.[0]?.value?.messages?.length,
+        })
       }
     } else {
-      console.log("[v0] Webhook recebido mas não é uma mensagem de texto")
-      console.log("[v0] Estrutura do body:", {
-        hasEntry: !!body.entry,
-        entryLength: body.entry?.length,
-        hasChanges: !!body.entry?.[0]?.changes,
-        changesLength: body.entry?.[0]?.changes?.length,
-        hasValue: !!body.entry?.[0]?.changes?.[0]?.value,
-        hasMessages: !!body.entry?.[0]?.changes?.[0]?.value?.messages,
-        messagesLength: body.entry?.[0]?.changes?.[0]?.value?.messages?.length,
-      })
+      console.log("[v0] ⚠️ Webhook recebido mas não é do WhatsApp Business Account")
+      console.log("[v0] Object type:", body.object)
+      console.log("[v0] Possível webhook de teste ou configuração")
     }
 
     console.log("[v0] ===== FIM WEBHOOK =====")
