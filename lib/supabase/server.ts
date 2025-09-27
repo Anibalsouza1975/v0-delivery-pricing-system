@@ -2,9 +2,8 @@ import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 
 /**
- * Especially important if using Fluid compute: Don't put this client in a
- * global variable. Always create a new client within each function when using
- * it.
+ * Cliente Supabase para uso em Server Components e Server Actions
+ * Importante: sempre criar uma nova instância, nunca usar variável global
  */
 export async function createClient() {
   const cookieStore = await cookies()
@@ -18,9 +17,9 @@ export async function createClient() {
         try {
           cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options))
         } catch {
-          // The "setAll" method was called from a Server Component.
-          // This can be ignored if you have middleware refreshing
-          // user sessions.
+          // O método "setAll" foi chamado de um Server Component.
+          // Isso pode ser ignorado se você tiver middleware atualizando
+          // as sessões dos usuários.
         }
       },
     },

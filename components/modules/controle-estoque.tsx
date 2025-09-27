@@ -16,164 +16,85 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { useDatabasePricing } from "@/components/database-pricing-context"
-import { Edit, Trash2, Package, TrendingUp, AlertTriangle, History, ShoppingCart } from "lucide-react"
+import { usePricing } from "@/components/pricing-context-supabase"
+import { Package, TrendingUp, AlertTriangle, History, ShoppingCart } from "lucide-react"
 
 export default function ControleEstoque() {
   const {
     ingredientesBase,
+    insumos,
     estoqueInsumos,
-    movimentacoesEstoque,
-    addEstoqueInsumo,
-    updateEstoqueInsumo,
-    deleteEstoqueInsumo,
-    addMovimentacaoEstoque,
-    getEstoqueAtualIngrediente,
-  } = useDatabasePricing()
+    comprasInsumos,
+    registrarCompra,
+    getEstoqueAtual,
+    addNotificacao,
+  } = usePricing()
 
   const [selectedTab, setSelectedTab] = useState("estoque")
   const [isCompraDialogOpen, setIsCompraDialogOpen] = useState(false)
-  const [isEditCompraDialogOpen, setIsEditCompraDialogOpen] = useState(false)
-  const [isMovimentacaoDialogOpen, setIsMovimentacaoDialogOpen] = useState(false)
-  const [editingCompra, setEditingCompra] = useState<any>(null)
 
   const [novaCompra, setNovaCompra] = useState({
-    ingredienteBaseId: "",
-    quantidadeComprada: "",
-    tipoEmbalagem: "",
-    quantidadeEmbalagem: "",
-    precoCompra: "",
-    fornecedor: "",
-    lote: "",
-    dataVencimento: "",
-  })
-
-  const [novaMovimentacao, setNovaMovimentacao] = useState({
-    ingredienteBaseId: "",
-    tipo: "entrada" as "entrada" | "saida",
+    insumoId: "",
     quantidade: "",
-    motivo: "",
-    observacao: "",
+    precoUnitario: "",
   })
 
-  const handleAddCompra = () => {
-    if (!novaCompra.ingredienteBaseId || !novaCompra.quantidadeComprada || !novaCompra.precoCompra) return
+  const getEstoqueAtualIngrediente = (ingredienteBaseId: string): number => {
+    // Encontrar todos os insumos relacionados a este ingrediente base
+    const insumosRelacionados = insumos.filter((i) => i.ingrediente_base_id === ingredienteBaseId)
 
-    let quantidadeTotal = Number.parseFloat(novaCompra.quantidadeComprada)
-    if (novaCompra.quantidadeEmbalagem && novaCompra.tipoEmbalagem) {
-      const qtdEmbalagem = Number.parseFloat(novaCompra.quantidadeEmbalagem)
-      quantidadeTotal = quantidadeTotal * qtdEmbalagem
-    }
-
-    const estoque = {
-      ingredienteBaseId: novaCompra.ingredienteBaseId,
-      quantidadeComprada: quantidadeTotal,
-      quantidadeAtual: quantidadeTotal,
-      dataCompra: new Date().toISOString(),
-      precoCompra: Number.parseFloat(novaCompra.precoCompra),
-      fornecedor: novaCompra.fornecedor || undefined,
-      lote: novaCompra.lote || undefined,
-      dataVencimento: novaCompra.dataVencimento || undefined,
-    }
-
-    addEstoqueInsumo(estoque)
-
-    addMovimentacaoEstoque({
-      ingredienteBaseId: novaCompra.ingredienteBaseId,
-      tipo: "entrada",
-      quantidade: quantidadeTotal,
-      motivo: "Compra",
-      observacao: `Compra de ${quantidadeTotal} unidades${novaCompra.fornecedor ? ` - ${novaCompra.fornecedor}` : ""}`,
-    })
-
-    setNovaCompra({
-      ingredienteBaseId: "",
-      quantidadeComprada: "",
-      tipoEmbalagem: "",
-      quantidadeEmbalagem: "",
-      precoCompra: "",
-      fornecedor: "",
-      lote: "",
-      dataVencimento: "",
-    })
-    setIsCompraDialogOpen(false)
+    // Somar o estoque de todos os insumos relacionados
+    return insumosRelacionados.reduce((total, insumo) => {
+      return total + getEstoqueAtual(insumo.id)
+    }, 0)
   }
 
-  const handleEditCompra = () => {
-    if (!editingCompra) return
+  const handleAddCompra = async () => {
+    if (!novaCompra.insumoId || !novaCompra.quantidade || !novaCompra.precoUnitario) return
 
-    let quantidadeTotal = Number.parseFloat(novaCompra.quantidadeComprada)
-    if (novaCompra.quantidadeEmbalagem && novaCompra.tipoEmbalagem) {
-      const qtdEmbalagem = Number.parseFloat(novaCompra.quantidadeEmbalagem)
-      quantidadeTotal = quantidadeTotal * qtdEmbalagem
-    }
+    try {
+      await registrarCompra(
+        novaCompra.insumoId,
+        Number.parseFloat(novaCompra.quantidade),
+        Number.parseFloat(novaCompra.precoUnitario),
+      )
 
-    const diferencaQuantidade = quantidadeTotal - editingCompra.quantidadeComprada
-    const novaQuantidadeAtual = editingCompra.quantidadeAtual + diferencaQuantidade
+      await addNotificacao({
+        titulo: "Compra Registrada",
+        mensagem: `Compra de ${novaCompra.quantidade} unidades registrada com sucesso`,
+        tipo: "success",
+        lida: false,
+      })
 
-    updateEstoqueInsumo(editingCompra.id, {
-      quantidadeComprada: quantidadeTotal,
-      quantidadeAtual: Math.max(0, novaQuantidadeAtual),
-      precoCompra: Number.parseFloat(novaCompra.precoCompra),
-      fornecedor: novaCompra.fornecedor || undefined,
-      lote: novaCompra.lote || undefined,
-      dataVencimento: novaCompra.dataVencimento || undefined,
-    })
-
-    if (diferencaQuantidade !== 0) {
-      addMovimentacaoEstoque({
-        ingredienteBaseId: editingCompra.ingredienteBaseId,
-        tipo: diferencaQuantidade > 0 ? "entrada" : "saida",
-        quantidade: Math.abs(diferencaQuantidade),
-        motivo: "Ajuste de compra",
-        observacao: `Correção de compra - ${diferencaQuantidade > 0 ? "Adição" : "Redução"} de ${Math.abs(diferencaQuantidade)} unidades`,
+      setNovaCompra({
+        insumoId: "",
+        quantidade: "",
+        precoUnitario: "",
+      })
+      setIsCompraDialogOpen(false)
+    } catch (error) {
+      console.error("[v0] Erro ao registrar compra:", error)
+      await addNotificacao({
+        titulo: "Erro ao Registrar Compra",
+        mensagem: "Ocorreu um erro ao registrar a compra",
+        tipo: "error",
+        lida: false,
       })
     }
-
-    setEditingCompra(null)
-    setIsEditCompraDialogOpen(false)
-  }
-
-  const handleDeleteCompra = (compra: any) => {
-    if (confirm("Tem certeza que deseja excluir esta compra? Isso afetará o estoque.")) {
-      deleteEstoqueInsumo(compra.id)
-
-      addMovimentacaoEstoque({
-        ingredienteBaseId: compra.ingredienteBaseId,
-        tipo: "saida",
-        quantidade: compra.quantidadeAtual,
-        motivo: "Exclusão de compra",
-        observacao: `Compra excluída - Remoção de ${compra.quantidadeAtual} unidades`,
-      })
-    }
-  }
-
-  const handleEditarCompra = (compra: any) => {
-    setEditingCompra(compra)
-    const ingredienteBase = ingredientesBase?.find((i) => i.id === compra.ingredienteBaseId)
-
-    setNovaCompra({
-      ingredienteBaseId: compra.ingredienteBaseId,
-      quantidadeComprada: compra.quantidadeComprada.toString(),
-      tipoEmbalagem: "",
-      quantidadeEmbalagem: "",
-      precoCompra: compra.precoCompra.toString(),
-      fornecedor: compra.fornecedor || "",
-      lote: compra.lote || "",
-      dataVencimento: compra.dataVencimento || "",
-    })
-    setIsEditCompraDialogOpen(true)
   }
 
   const ingredientesComEstoque =
     ingredientesBase?.map((ingrediente) => {
       const quantidadeAtual = getEstoqueAtualIngrediente(ingrediente.id)
-      const estoquesIngrediente = estoqueInsumos.filter(
-        (e) => e.ingredienteBaseId === ingrediente.id && e.quantidadeAtual > 0,
-      )
-      const valorEstoque = estoquesIngrediente.reduce((total, e) => {
-        const precoUnitario = e.precoCompra / e.quantidadeComprada
-        return total + e.quantidadeAtual * precoUnitario
+
+      // Calcular valor do estoque baseado nas compras
+      const insumosRelacionados = insumos.filter((i) => i.ingrediente_base_id === ingrediente.id)
+      const valorEstoque = insumosRelacionados.reduce((total, insumo) => {
+        const comprasInsumo = comprasInsumos.filter((c) => c.insumo_id === insumo.id && c.quantidade_restante > 0)
+        const valorInsumo = comprasInsumo.reduce((subtotal, compra) => {
+          return subtotal + compra.quantidade_restante * compra.preco_unitario
+        }, 0)
+        return total + valorInsumo
       }, 0)
 
       return {
@@ -184,7 +105,10 @@ export default function ControleEstoque() {
     }) || []
 
   const ingredientesEstoqueBaixo = ingredientesComEstoque.filter((i) => i.quantidadeAtual < 10)
-  const valorTotalEstoque = ingredientesComEstoque.reduce((total, ingrediente) => total + ingrediente.valorEstoque, 0)
+  const valorTotalEstoque = ingredientesComEstoque.reduce(
+    (total, ingrediente) => total + (ingrediente.valorEstoque || 0),
+    0,
+  )
   const totalItensEstoque = ingredientesComEstoque.filter((i) => i.quantidadeAtual > 0).length
 
   const getStatusBadge = (quantidade: number) => {
@@ -200,7 +124,7 @@ export default function ControleEstoque() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Controle de Estoque</h2>
-          <p className="text-muted-foreground">Registre compras dos ingredientes base e acompanhe estoque atual</p>
+          <p className="text-muted-foreground">Registre compras dos insumos e acompanhe estoque atual</p>
         </div>
         <div className="flex gap-2">
           <Dialog open={isCompraDialogOpen} onOpenChange={setIsCompraDialogOpen}>
@@ -213,124 +137,53 @@ export default function ControleEstoque() {
             <DialogContent className="sm:max-w-[600px]">
               <DialogHeader>
                 <DialogTitle>Registrar Nova Compra</DialogTitle>
-                <DialogDescription>Adicione uma nova compra de ingrediente ao estoque</DialogDescription>
+                <DialogDescription>Adicione uma nova compra de insumo ao estoque</DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="ingrediente">Ingrediente Base</Label>
+                  <Label htmlFor="insumo">Insumo</Label>
                   <Select
-                    value={novaCompra.ingredienteBaseId}
-                    onValueChange={(value) => setNovaCompra({ ...novaCompra, ingredienteBaseId: value })}
+                    value={novaCompra.insumoId}
+                    onValueChange={(value) => setNovaCompra({ ...novaCompra, insumoId: value })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione o ingrediente" />
+                      <SelectValue placeholder="Selecione o insumo" />
                     </SelectTrigger>
                     <SelectContent>
-                      {ingredientesBase?.map((ingrediente: any) => (
-                        <SelectItem key={ingrediente.id} value={ingrediente.id}>
-                          {ingrediente.nome} ({ingrediente.unidade})
-                        </SelectItem>
-                      ))}
+                      {insumos?.map((insumo: any) => {
+                        const ingredienteBase = ingredientesBase?.find((i) => i.id === insumo.ingrediente_base_id)
+                        return (
+                          <SelectItem key={insumo.id} value={insumo.id}>
+                            {insumo.nome} - {ingredienteBase?.nome} ({insumo.unidade})
+                          </SelectItem>
+                        )
+                      })}
                     </SelectContent>
                   </Select>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="quantidade">Quantidade Comprada</Label>
+                    <Label htmlFor="quantidade">Quantidade</Label>
                     <Input
                       id="quantidade"
                       type="number"
                       step="0.01"
-                      value={novaCompra.quantidadeComprada}
-                      onChange={(e) => setNovaCompra({ ...novaCompra, quantidadeComprada: e.target.value })}
+                      value={novaCompra.quantidade}
+                      onChange={(e) => setNovaCompra({ ...novaCompra, quantidade: e.target.value })}
                       placeholder="Ex: 10"
                     />
                   </div>
 
                   <div>
-                    <Label htmlFor="tipoEmbalagem">Tipo de Embalagem (Opcional)</Label>
-                    <Select
-                      value={novaCompra.tipoEmbalagem}
-                      onValueChange={(value) => setNovaCompra({ ...novaCompra, tipoEmbalagem: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="caixa">Caixa</SelectItem>
-                        <SelectItem value="pacote">Pacote</SelectItem>
-                        <SelectItem value="fardo">Fardo</SelectItem>
-                        <SelectItem value="saco">Saco</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="qtdEmbalagem">Qtd por Embalagem</Label>
-                    <Input
-                      id="qtdEmbalagem"
-                      type="number"
-                      value={novaCompra.quantidadeEmbalagem}
-                      onChange={(e) => setNovaCompra({ ...novaCompra, quantidadeEmbalagem: e.target.value })}
-                      placeholder="Ex: 24"
-                    />
-                  </div>
-                </div>
-
-                {novaCompra.quantidadeComprada && novaCompra.quantidadeEmbalagem && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                    <p className="text-sm text-blue-700">
-                      <strong>Total calculado:</strong>{" "}
-                      {Number.parseFloat(novaCompra.quantidadeComprada) *
-                        Number.parseFloat(novaCompra.quantidadeEmbalagem)}{" "}
-                      unidades
-                    </p>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="preco">Preço Total da Compra</Label>
+                    <Label htmlFor="preco">Preço Unitário</Label>
                     <Input
                       id="preco"
                       type="number"
                       step="0.01"
-                      value={novaCompra.precoCompra}
-                      onChange={(e) => setNovaCompra({ ...novaCompra, precoCompra: e.target.value })}
-                      placeholder="Ex: 50.00"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="fornecedor">Fornecedor (Opcional)</Label>
-                    <Input
-                      id="fornecedor"
-                      value={novaCompra.fornecedor}
-                      onChange={(e) => setNovaCompra({ ...novaCompra, fornecedor: e.target.value })}
-                      placeholder="Nome do fornecedor"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="lote">Lote (Opcional)</Label>
-                    <Input
-                      id="lote"
-                      value={novaCompra.lote}
-                      onChange={(e) => setNovaCompra({ ...novaCompra, lote: e.target.value })}
-                      placeholder="Número do lote"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="vencimento">Data de Vencimento (Opcional)</Label>
-                    <Input
-                      id="vencimento"
-                      type="date"
-                      value={novaCompra.dataVencimento}
-                      onChange={(e) => setNovaCompra({ ...novaCompra, dataVencimento: e.target.value })}
+                      value={novaCompra.precoUnitario}
+                      onChange={(e) => setNovaCompra({ ...novaCompra, precoUnitario: e.target.value })}
+                      placeholder="Ex: 5.00"
                     />
                   </div>
                 </div>
@@ -353,7 +206,7 @@ export default function ControleEstoque() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {valorTotalEstoque.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+              {(valorTotalEstoque || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
             </div>
             <p className="text-xs text-muted-foreground">Investimento em estoque</p>
           </CardContent>
@@ -388,7 +241,10 @@ export default function ControleEstoque() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {estoqueInsumos.filter((e) => new Date(e.dataCompra).toDateString() === new Date().toDateString()).length}
+              {
+                comprasInsumos.filter((c) => new Date(c.data_compra).toDateString() === new Date().toDateString())
+                  .length
+              }
             </div>
             <p className="text-xs text-muted-foreground">Registradas hoje</p>
           </CardContent>
@@ -432,11 +288,14 @@ export default function ControleEstoque() {
                             <Badge variant="secondary">{ingrediente.categoria}</Badge>
                           </TableCell>
                           <TableCell className="text-right font-mono">
-                            {ingrediente.quantidadeAtual.toFixed(2)}
+                            {(ingrediente.quantidadeAtual || 0).toFixed(2)}
                           </TableCell>
                           <TableCell className="text-right text-muted-foreground">{ingrediente.unidade}</TableCell>
                           <TableCell className="text-right font-mono">
-                            {ingrediente.valorEstoque.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                            {(ingrediente.valorEstoque || 0).toLocaleString("pt-BR", {
+                              style: "currency",
+                              currency: "BRL",
+                            })}
                           </TableCell>
                           <TableCell>
                             <Badge variant={status.variant}>{status.text}</Badge>
@@ -470,7 +329,7 @@ export default function ControleEstoque() {
                       <div>
                         <h4 className="font-medium">{ingrediente.nome}</h4>
                         <p className="text-sm text-muted-foreground">
-                          Estoque atual: {ingrediente.quantidadeAtual.toFixed(2)} {ingrediente.unidade}
+                          Estoque atual: {(ingrediente.quantidadeAtual || 0).toFixed(2)} {ingrediente.unidade}
                         </p>
                       </div>
                       <Badge variant="secondary">Repor</Badge>
@@ -494,49 +353,45 @@ export default function ControleEstoque() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Data</TableHead>
-                      <TableHead>Ingrediente</TableHead>
-                      <TableHead className="text-right">Qtd Comprada</TableHead>
-                      <TableHead className="text-right">Qtd Atual</TableHead>
-                      <TableHead className="text-right">Preço Pago</TableHead>
-                      <TableHead>Fornecedor</TableHead>
-                      <TableHead className="text-center">Ações</TableHead>
+                      <TableHead>Insumo</TableHead>
+                      <TableHead className="text-right">Quantidade</TableHead>
+                      <TableHead className="text-right">Preço Unitário</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                      <TableHead className="text-right">Restante</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {estoqueInsumos
-                      .sort((a, b) => new Date(b.dataCompra).getTime() - new Date(a.dataCompra).getTime())
+                    {comprasInsumos
+                      .sort((a, b) => new Date(b.data_compra).getTime() - new Date(a.data_compra).getTime())
                       .map((compra) => {
-                        const ingrediente = ingredientesBase?.find((i) => i.id === compra.ingredienteBaseId)
+                        const insumo = insumos?.find((i) => i.id === compra.insumo_id)
+                        const ingredienteBase = ingredientesBase?.find((i) => i.id === insumo?.ingrediente_base_id)
                         return (
                           <TableRow key={compra.id}>
-                            <TableCell>{new Date(compra.dataCompra).toLocaleDateString("pt-BR")}</TableCell>
+                            <TableCell>{new Date(compra.data_compra).toLocaleDateString("pt-BR")}</TableCell>
                             <TableCell className="font-medium">
-                              {ingrediente?.nome || "Ingrediente não encontrado"}
+                              {insumo?.nome || "Insumo não encontrado"}
+                              {ingredienteBase && (
+                                <div className="text-xs text-muted-foreground">{ingredienteBase.nome}</div>
+                              )}
                             </TableCell>
                             <TableCell className="text-right">
-                              {compra.quantidadeComprada.toFixed(2)} {ingrediente?.unidade}
+                              {(compra.quantidade || 0).toFixed(2)} {insumo?.unidade}
                             </TableCell>
                             <TableCell className="text-right">
-                              {compra.quantidadeAtual.toFixed(2)} {ingrediente?.unidade}
+                              {(compra.preco_unitario || 0).toLocaleString("pt-BR", {
+                                style: "currency",
+                                currency: "BRL",
+                              })}
                             </TableCell>
                             <TableCell className="text-right">
-                              {compra.precoCompra.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                              {((compra.quantidade || 0) * (compra.preco_unitario || 0)).toLocaleString("pt-BR", {
+                                style: "currency",
+                                currency: "BRL",
+                              })}
                             </TableCell>
-                            <TableCell>{compra.fornecedor || "-"}</TableCell>
-                            <TableCell className="text-center">
-                              <div className="flex justify-center space-x-2">
-                                <Button variant="ghost" size="sm" onClick={() => handleEditarCompra(compra)}>
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDeleteCompra(compra)}
-                                  className="text-destructive hover:text-destructive"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
+                            <TableCell className="text-right">
+                              {(compra.quantidade_restante || 0).toFixed(2)} {insumo?.unidade}
                             </TableCell>
                           </TableRow>
                         )
@@ -548,72 +403,6 @@ export default function ControleEstoque() {
           </Card>
         </TabsContent>
       </Tabs>
-
-      <Dialog open={isEditCompraDialogOpen} onOpenChange={setIsEditCompraDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>Editar Compra</DialogTitle>
-            <DialogDescription>Modifique os dados da compra. Isso afetará o estoque atual.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Ingrediente Base</Label>
-              <Input
-                value={ingredientesBase?.find((i) => i.id === novaCompra.ingredienteBaseId)?.nome || ""}
-                disabled
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="edit-quantidade">Quantidade Comprada</Label>
-                <Input
-                  id="edit-quantidade"
-                  type="number"
-                  step="0.01"
-                  value={novaCompra.quantidadeComprada}
-                  onChange={(e) => setNovaCompra({ ...novaCompra, quantidadeComprada: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="edit-preco">Preço Total da Compra</Label>
-                <Input
-                  id="edit-preco"
-                  type="number"
-                  step="0.01"
-                  value={novaCompra.precoCompra}
-                  onChange={(e) => setNovaCompra({ ...novaCompra, precoCompra: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="edit-fornecedor">Fornecedor</Label>
-                <Input
-                  id="edit-fornecedor"
-                  value={novaCompra.fornecedor}
-                  onChange={(e) => setNovaCompra({ ...novaCompra, fornecedor: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="edit-lote">Lote</Label>
-                <Input
-                  id="edit-lote"
-                  value={novaCompra.lote}
-                  onChange={(e) => setNovaCompra({ ...novaCompra, lote: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <Button onClick={handleEditCompra} className="w-full">
-              Salvar Alterações
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

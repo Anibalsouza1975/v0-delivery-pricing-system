@@ -22,7 +22,7 @@ import {
   HelpCircle,
   MessageCircle,
 } from "lucide-react"
-import { useDatabasePricing } from "@/components/database-pricing-context"
+import { usePricing } from "@/components/pricing-context"
 import CustosFixosModule from "@/components/modules/custos-fixos"
 import CustosVariaveisModule from "@/components/modules/custos-variaveis"
 import CadastroInsumosModule from "@/components/modules/cadastro-insumos"
@@ -249,7 +249,7 @@ const modules = [
 export default function DeliveryPricingSystem() {
   const [activeModule, setActiveModule] = useState<string | null>(null)
   const { getTotalCustosFixos, produtos, getTotalCustosVariaveis, insumos, bebidas, combos, vendas, estoqueInsumos } =
-    useDatabasePricing()
+    usePricing()
 
   const totalVendas = vendas?.reduce((acc, venda) => acc + venda.total, 0) || 0
   const vendasHoje =

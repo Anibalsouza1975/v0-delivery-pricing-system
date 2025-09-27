@@ -1,10 +1,19 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { GeistSans } from "geist/font/sans"
-import { GeistMono } from "geist/font/mono"
-import { DatabasePricingProvider } from "@/components/database-pricing-context"
+import { Inter, JetBrains_Mono } from "next/font/google"
+import { PricingProvider } from "@/components/pricing-context-supabase"
 import { Suspense } from "react"
 import "./globals.css"
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+})
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+})
 
 export const metadata: Metadata = {
   title: "Sistema de Precificação Delivery",
@@ -19,9 +28,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
-      <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
+      <body className={`font-sans ${inter.variable} ${jetbrainsMono.variable}`}>
         <Suspense fallback={null}>
-          <DatabasePricingProvider>{children}</DatabasePricingProvider>
+          <PricingProvider>{children}</PricingProvider>
         </Suspense>
       </body>
     </html>

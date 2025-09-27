@@ -18,12 +18,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { useDatabasePricing } from "@/components/database-pricing-context"
+import { usePricing } from "@/components/pricing-context-supabase"
 import { Plus, Edit, Trash2, Coffee, Percent, X } from "lucide-react"
 import type { Bebida } from "@/app/page"
 
 export default function BebidasModule() {
-  const { bebidas, addBebida, updateBebida, deleteBebida } = useDatabasePricing()
+  const { bebidas, addBebida, updateBebida, deleteBebida } = usePricing()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingBebida, setEditingBebida] = useState<Bebida | null>(null)
   const [configIfood, setConfigIfood] = useState({
@@ -50,6 +50,36 @@ export default function BebidasModule() {
     }
   }
 
+  const handleEdit = (bebida: Bebida) => {
+    console.log("[v0] handleEdit called with bebida:", bebida)
+    setEditingBebida(bebida)
+    const formDataToSet = {
+      nome: bebida.nome,
+      custoUnitario: (bebida.custo_unitario ?? 0).toString(), // Fixed: use custo_unitario from DB
+      markup: (bebida.markup ?? 100).toString(),
+      foto: bebida.imagem_url || "", // Fixed: use imagem_url from DB
+      descricao: bebida.descricao || "",
+    }
+    console.log("[v0] Setting form data:", formDataToSet)
+    setFormData(formDataToSet)
+    setIsDialogOpen(true)
+    console.log("[v0] Dialog should be open now")
+  }
+
+  const handleDelete = (id: string) => {
+    if (confirm("Tem certeza que deseja excluir esta bebida?")) {
+      deleteBebida(id)
+    }
+  }
+
+  const calculatePrecoVenda = () => {
+    const custo = Number.parseFloat(formData.custoUnitario) || 0
+    const markup = Number.parseFloat(formData.markup) || 0
+    const precoCalculado = custo * (1 + markup / 100)
+    console.log("[v0] calculatePrecoVenda - custo:", custo, "markup:", markup, "precoCalculado:", precoCalculado)
+    return precoCalculado
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -57,14 +87,25 @@ export default function BebidasModule() {
     const markup = Number.parseFloat(formData.markup)
     const precoVenda = custoUnitario * (1 + markup / 100)
 
+    // Calculate iFood price
+    const precoIfoodBase = precoVenda + configIfood.valorFrete - configIfood.cupomDesconto
+    const precoIfood = precoIfoodBase / (1 - configIfood.comissaoIfood / 100)
+    const lucroUnitario = precoVenda - custoUnitario
+
     const bebidaData = {
       nome: formData.nome,
-      custoUnitario,
+      custo_unitario: custoUnitario, // Fixed: use correct field name
       markup,
-      precoVenda,
-      foto: formData.foto,
+      preco_venda: precoVenda, // Fixed: use correct field name
+      imagem_url: formData.foto, // Fixed: use correct field name
       descricao: formData.descricao,
+      preco_ifood: precoIfood,
+      lucro_unitario: lucroUnitario,
+      tamanho: "350ml", // Default size
+      ativo: true,
     }
+
+    console.log("[v0] Submitting bebida data:", bebidaData)
 
     if (editingBebida) {
       updateBebida(editingBebida.id, bebidaData)
@@ -77,37 +118,14 @@ export default function BebidasModule() {
     setIsDialogOpen(false)
   }
 
-  const handleEdit = (bebida: Bebida) => {
-    setEditingBebida(bebida)
-    setFormData({
-      nome: bebida.nome,
-      custoUnitario: bebida.custoUnitario.toString(),
-      markup: bebida.markup.toString(),
-      foto: bebida.foto || "",
-      descricao: bebida.descricao || "",
-    })
-    setIsDialogOpen(true)
-  }
-
-  const handleDelete = (id: string) => {
-    if (confirm("Tem certeza que deseja excluir esta bebida?")) {
-      deleteBebida(id)
-    }
-  }
-
-  const calculatePrecoVenda = () => {
-    const custo = Number.parseFloat(formData.custoUnitario) || 0
-    const markup = Number.parseFloat(formData.markup) || 0
-    return custo * (1 + markup / 100)
-  }
-
   const totalBebidas = bebidas.length
-  const markupMedio = bebidas.length > 0 ? bebidas.reduce((total, b) => total + b.markup, 0) / bebidas.length : 0
-  const precoMedio = bebidas.length > 0 ? bebidas.reduce((total, b) => total + b.precoVenda, 0) / bebidas.length : 0
+  const markupMedio = bebidas.length > 0 ? bebidas.reduce((total, b) => total + (b.markup || 0), 0) / bebidas.length : 0
+  const precoMedio =
+    bebidas.length > 0 ? bebidas.reduce((total, b) => total + (b.precoVenda || 0), 0) / bebidas.length : 0
   const precoMedioIfood =
     bebidas.length > 0
       ? bebidas.reduce((total, b) => {
-          const precoIfoodBase = b.precoVenda + configIfood.valorFrete - configIfood.cupomDesconto
+          const precoIfoodBase = (b.precoVenda || 0) + configIfood.valorFrete - configIfood.cupomDesconto
           const precoIfood = precoIfoodBase / (1 - configIfood.comissaoIfood / 100)
           return total + precoIfood
         }, 0) / bebidas.length
@@ -144,7 +162,7 @@ export default function BebidasModule() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {precoMedio.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+              {(precoMedio || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
             </div>
             <p className="text-xs text-muted-foreground">Preço médio de venda</p>
           </CardContent>
@@ -156,7 +174,7 @@ export default function BebidasModule() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">
-              {precoMedioIfood.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+              {(precoMedioIfood || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
             </div>
             <p className="text-xs text-muted-foreground">Preço médio no iFood</p>
           </CardContent>
@@ -326,7 +344,7 @@ export default function BebidasModule() {
                     <div className="flex justify-between text-sm">
                       <span>Custo:</span>
                       <span className="font-mono">
-                        {Number.parseFloat(formData.custoUnitario).toLocaleString("pt-BR", {
+                        {(Number.parseFloat(formData.custoUnitario) || 0).toLocaleString("pt-BR", {
                           style: "currency",
                           currency: "BRL",
                         })}
@@ -339,7 +357,7 @@ export default function BebidasModule() {
                     <div className="flex justify-between font-bold text-primary">
                       <span>Preço de Venda:</span>
                       <span className="font-mono">
-                        {calculatePrecoVenda().toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                        {(calculatePrecoVenda() || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                       </span>
                     </div>
 
@@ -401,10 +419,10 @@ export default function BebidasModule() {
                         <span>Preço iFood:</span>
                         <span className="font-mono">
                           {(() => {
-                            const precoVenda = calculatePrecoVenda()
+                            const precoVenda = calculatePrecoVenda() || 0
                             const precoIfoodBase = precoVenda + configIfood.valorFrete - configIfood.cupomDesconto
                             const precoIfood = precoIfoodBase / (1 - configIfood.comissaoIfood / 100)
-                            return precoIfood.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+                            return (precoIfood || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
                           })()}
                         </span>
                       </div>
@@ -443,26 +461,44 @@ export default function BebidasModule() {
               </TableHeader>
               <TableBody>
                 {bebidas.map((bebida) => {
-                  const precoIfoodBase = bebida.precoVenda + configIfood.valorFrete - configIfood.cupomDesconto
+                  const precoIfoodBase = (bebida.preco_venda || 0) + configIfood.valorFrete - configIfood.cupomDesconto
                   const precoIfood = precoIfoodBase / (1 - configIfood.comissaoIfood / 100)
 
                   return (
                     <TableRow key={bebida.id}>
-                      <TableCell className="font-medium">{bebida.nome}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center space-x-3">
+                          {bebida.imagem_url && (
+                            <img
+                              src={bebida.imagem_url || "/placeholder.svg"}
+                              alt={bebida.nome}
+                              className="w-10 h-10 object-cover rounded-lg border"
+                            />
+                          )}
+                          <div>
+                            <div className="font-medium">{bebida.nome}</div>
+                            {bebida.descricao && (
+                              <div className="text-sm text-muted-foreground">{bebida.descricao}</div>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
                       <TableCell className="text-right font-mono">
-                        {bebida.custoUnitario.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                        {(bebida.custo_unitario || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Badge variant="outline">{bebida.markup.toFixed(0)}%</Badge>
+                        <Badge variant="outline">{(bebida.markup || 0).toFixed(0)}%</Badge>
                       </TableCell>
                       <TableCell className="text-right font-mono font-bold text-primary">
-                        {bebida.precoVenda.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                        {bebida.preco_venda && !isNaN(bebida.preco_venda)
+                          ? bebida.preco_venda.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+                          : "R$ 0,00"}
                       </TableCell>
                       <TableCell className="text-right font-mono font-bold text-orange-600">
-                        {precoIfood.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                        {(precoIfood || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                       </TableCell>
                       <TableCell className="text-right font-mono text-green-600">
-                        {(bebida.precoVenda - bebida.custoUnitario).toLocaleString("pt-BR", {
+                        {((bebida.preco_venda || 0) - (bebida.custo_unitario || 0)).toLocaleString("pt-BR", {
                           style: "currency",
                           currency: "BRL",
                         })}

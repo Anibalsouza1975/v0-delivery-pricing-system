@@ -18,7 +18,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { useDatabasePricing } from "@/components/database-pricing-context"
+import { usePricing } from "@/components/pricing-context-supabase"
 import { Plus, Edit, Trash2, ShoppingCart } from "lucide-react"
 
 const categoriasIngrediente = [
@@ -40,7 +40,7 @@ const categoriasIngrediente = [
 const unidadesBase = ["kg", "g", "L", "ml", "unidade", "fatia", "porção", "pacote", "lata", "garrafa", "caixa", "fardo"]
 
 export default function IngredientesBaseModule() {
-  const { ingredientesBase, addIngredienteBase, updateIngredienteBase, deleteIngredienteBase } = useDatabasePricing()
+  const { ingredientesBase, addIngredienteBase, updateIngredienteBase, deleteIngredienteBase } = usePricing()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingIngrediente, setEditingIngrediente] = useState<any>(null)
   const [formData, setFormData] = useState({
@@ -49,47 +49,75 @@ export default function IngredientesBaseModule() {
     unidade: "",
     precoUnitario: "",
   })
+  const [error, setError] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError(null)
+    setIsSubmitting(true)
 
-    const ingredienteData = {
-      nome: formData.nome,
-      categoria: formData.categoria,
-      unidade: formData.unidade,
-      precoUnitario: Number.parseFloat(formData.precoUnitario),
+    try {
+      console.log("[v0] Submitting ingrediente base form:", formData)
+
+      const ingredienteData = {
+        nome: formData.nome,
+        categoria: formData.categoria,
+        unidade: formData.unidade,
+        preco_unitario: Number.parseFloat(formData.precoUnitario), // Use snake_case for database
+      }
+
+      console.log("[v0] Processed ingrediente data:", ingredienteData)
+
+      if (editingIngrediente) {
+        console.log("[v0] Updating ingrediente base:", editingIngrediente.id)
+        await updateIngredienteBase(editingIngrediente.id, ingredienteData)
+      } else {
+        console.log("[v0] Adding new ingrediente base")
+        await addIngredienteBase(ingredienteData)
+      }
+
+      // Reset form on success
+      setFormData({
+        nome: "",
+        categoria: "",
+        unidade: "",
+        precoUnitario: "",
+      })
+      setEditingIngrediente(null)
+      setIsDialogOpen(false)
+      console.log("[v0] Ingrediente base operation completed successfully")
+    } catch (error) {
+      console.error("[v0] Erro ao submeter formulário de ingrediente base:", error)
+      setError(error instanceof Error ? error.message : "Erro desconhecido ao salvar ingrediente base")
+    } finally {
+      setIsSubmitting(false)
     }
-
-    if (editingIngrediente) {
-      updateIngredienteBase(editingIngrediente.id, ingredienteData)
-    } else {
-      addIngredienteBase(ingredienteData)
-    }
-
-    setFormData({
-      nome: "",
-      categoria: "",
-      unidade: "",
-      precoUnitario: "",
-    })
-    setEditingIngrediente(null)
-    setIsDialogOpen(false)
   }
 
   const handleEdit = (ingrediente: any) => {
+    console.log("[v0] Editing ingrediente:", ingrediente)
     setEditingIngrediente(ingrediente)
     setFormData({
       nome: ingrediente.nome,
       categoria: ingrediente.categoria,
       unidade: ingrediente.unidade,
-      precoUnitario: ingrediente.precoUnitario.toString(),
+      precoUnitario: (ingrediente.preco_unitario || 0).toString(), // Use snake_case from database
     })
+    setError(null)
     setIsDialogOpen(true)
   }
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm("Tem certeza que deseja excluir este ingrediente base?")) {
-      deleteIngredienteBase(id)
+      try {
+        console.log("[v0] Deleting ingrediente base:", id)
+        await deleteIngredienteBase(id)
+        console.log("[v0] Ingrediente base deleted successfully")
+      } catch (error) {
+        console.error("[v0] Erro ao excluir ingrediente base:", error)
+        setError(error instanceof Error ? error.message : "Erro desconhecido ao excluir ingrediente base")
+      }
     }
   }
 
@@ -115,6 +143,7 @@ export default function IngredientesBaseModule() {
                   unidade: "",
                   precoUnitario: "",
                 })
+                setError(null)
               }}
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -126,6 +155,13 @@ export default function IngredientesBaseModule() {
               <DialogTitle>{editingIngrediente ? "Editar Ingrediente Base" : "Adicionar Ingrediente Base"}</DialogTitle>
               <DialogDescription>Cadastre os ingredientes que você compra para usar nos produtos.</DialogDescription>
             </DialogHeader>
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                <p className="text-sm text-red-800">{error}</p>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit}>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
@@ -136,6 +172,7 @@ export default function IngredientesBaseModule() {
                     onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                     placeholder="Ex: Carne Bovina, Queijo Cheddar, Pão Brioche"
                     required
+                    disabled={isSubmitting}
                   />
                 </div>
 
@@ -145,6 +182,7 @@ export default function IngredientesBaseModule() {
                     value={formData.categoria}
                     onValueChange={(value) => setFormData({ ...formData, categoria: value })}
                     required
+                    disabled={isSubmitting}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione uma categoria" />
@@ -166,6 +204,7 @@ export default function IngredientesBaseModule() {
                       value={formData.unidade}
                       onValueChange={(value) => setFormData({ ...formData, unidade: value })}
                       required
+                      disabled={isSubmitting}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione" />
@@ -191,6 +230,7 @@ export default function IngredientesBaseModule() {
                       onChange={(e) => setFormData({ ...formData, precoUnitario: e.target.value })}
                       placeholder="0,00"
                       required
+                      disabled={isSubmitting}
                     />
                   </div>
                 </div>
@@ -211,12 +251,20 @@ export default function IngredientesBaseModule() {
                 </div>
               </div>
               <DialogFooter>
-                <Button type="submit">{editingIngrediente ? "Salvar Alterações" : "Adicionar Ingrediente"}</Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? "Salvando..." : editingIngrediente ? "Salvar Alterações" : "Adicionar Ingrediente"}
+                </Button>
               </DialogFooter>
             </form>
           </DialogContent>
         </Dialog>
       </div>
+
+      {error && !isDialogOpen && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+          <p className="text-sm text-red-800">{error}</p>
+        </div>
+      )}
 
       {/* Tabela de ingredientes base */}
       <Card>
@@ -247,7 +295,10 @@ export default function IngredientesBaseModule() {
                     </TableCell>
                     <TableCell className="text-muted-foreground">{ingrediente.unidade}</TableCell>
                     <TableCell className="text-right font-mono">
-                      {(ingrediente.precoUnitario || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                      {(ingrediente.preco_unitario || 0).toLocaleString("pt-BR", {
+                        style: "currency",
+                        currency: "BRL",
+                      })}
                       <div className="text-xs text-muted-foreground">por {ingrediente.unidade}</div>
                     </TableCell>
                     <TableCell className="text-center">

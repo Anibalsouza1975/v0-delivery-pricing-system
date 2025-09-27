@@ -19,7 +19,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { useDatabasePricing } from "@/components/database-pricing-context"
+import { usePricing } from "@/components/pricing-context-supabase"
 import { Plus, Edit, Trash2, Package } from "lucide-react"
 import type { Insumo } from "@/app/page"
 
@@ -43,9 +43,11 @@ const categoriasInsumo = [
 const unidadesUso = ["g", "ml", "cm", "unidade", "fatia", "porção", "pacote", "lata", "garrafa", "caixa", "fardo"]
 
 export default function CadastroInsumosModule() {
-  const { insumos, addInsumo, updateInsumo, deleteInsumo, ingredientesBase } = useDatabasePricing()
+  const { insumos, addInsumo, updateInsumo, deleteInsumo, ingredientesBase } = usePricing()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingInsumo, setEditingInsumo] = useState<Insumo | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     nome: "",
     ingredienteBaseId: "",
@@ -54,70 +56,120 @@ export default function CadastroInsumosModule() {
     categoria: "",
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    const ingredienteBase = ingredientesBase?.find((i) => i.id === formData.ingredienteBaseId)
-    if (!ingredienteBase) return
+    try {
+      setIsSubmitting(true)
+      setError(null)
+      console.log("[v0] Iniciando submissão do formulário de insumo")
 
-    let precoCalculado = 0
-    const quantidade = Number.parseFloat(formData.quantidadeUso)
+      const ingredienteBase = ingredientesBase?.find((i) => i.id === formData.ingredienteBaseId)
+      if (!ingredienteBase) {
+        throw new Error("Ingrediente base não encontrado")
+      }
 
-    if (ingredienteBase.unidade === "kg" && formData.unidadeUso === "g") {
-      // Conversão kg para g
-      precoCalculado = (ingredienteBase.precoUnitario * quantidade) / 1000
-    } else if (ingredienteBase.unidade === "L" && formData.unidadeUso === "ml") {
-      // Conversão L para ml
-      precoCalculado = (ingredienteBase.precoUnitario * quantidade) / 1000
-    } else if (ingredienteBase.unidade === "g" && formData.unidadeUso === "g") {
-      // g para g (direto)
-      precoCalculado = ingredienteBase.precoUnitario * quantidade
-    } else if (ingredienteBase.unidade === "ml" && formData.unidadeUso === "ml") {
-      // ml para ml (direto)
-      precoCalculado = ingredienteBase.precoUnitario * quantidade
-    } else if (
-      ["unidade", "fatia", "porção", "pacote", "lata", "garrafa", "caixa", "fardo"].includes(ingredienteBase.unidade) &&
-      ["unidade", "fatia", "porção"].includes(formData.unidadeUso)
-    ) {
-      // Unidades discretas (unidade, fatia, porção, pacote, etc.)
-      precoCalculado = ingredienteBase.precoUnitario * quantidade
-    } else if (ingredienteBase.unidade === formData.unidadeUso) {
-      // Mesma unidade (qualquer uma)
-      precoCalculado = ingredienteBase.precoUnitario * quantidade
-    } else {
-      // Fallback: assume conversão direta
-      precoCalculado = ingredienteBase.precoUnitario * quantidade
+      let precoCalculado = 0
+      const quantidade = Number.parseFloat(formData.quantidadeUso)
+
+      if (isNaN(quantidade) || quantidade <= 0) {
+        throw new Error("Quantidade deve ser um número válido maior que zero")
+      }
+
+      const precoUnitarioBase = ingredienteBase.preco_unitario || 0
+      if (precoUnitarioBase <= 0) {
+        throw new Error(
+          `O ingrediente base "${ingredienteBase.nome}" não possui preço unitário válido. Verifique o cadastro do ingrediente base.`,
+        )
+      }
+
+      if (ingredienteBase.unidade === "kg" && formData.unidadeUso === "g") {
+        // Conversão kg para g
+        precoCalculado = (precoUnitarioBase * quantidade) / 1000
+      } else if (ingredienteBase.unidade === "L" && formData.unidadeUso === "ml") {
+        // Conversão L para ml
+        precoCalculado = (precoUnitarioBase * quantidade) / 1000
+      } else if (ingredienteBase.unidade === "g" && formData.unidadeUso === "g") {
+        // g para g (direto)
+        precoCalculado = precoUnitarioBase * quantidade
+      } else if (ingredienteBase.unidade === "ml" && formData.unidadeUso === "ml") {
+        // ml para ml (direto)
+        precoCalculado = precoUnitarioBase * quantidade
+      } else if (
+        ["unidade", "fatia", "porção", "pacote", "lata", "garrafa", "caixa", "fardo"].includes(
+          ingredienteBase.unidade,
+        ) &&
+        ["unidade", "fatia", "porção"].includes(formData.unidadeUso)
+      ) {
+        // Unidades discretas (unidade, fatia, porção, pacote, etc.)
+        precoCalculado = precoUnitarioBase * quantidade
+      } else if (ingredienteBase.unidade === formData.unidadeUso) {
+        // Mesma unidade (qualquer uma)
+        precoCalculado = precoUnitarioBase * quantidade
+      } else {
+        // Fallback: assume conversão direta
+        precoCalculado = precoUnitarioBase * quantidade
+      }
+
+      if (isNaN(precoCalculado) || precoCalculado < 0) {
+        throw new Error("Erro no cálculo do preço. Verifique os dados do ingrediente base.")
+      }
+
+      console.log("[v0] Dados do insumo preparados:", {
+        nome: formData.nome,
+        ingredienteBaseId: formData.ingredienteBaseId,
+        ingredienteBaseNome: ingredienteBase.nome,
+        quantidadeUso: quantidade,
+        unidadeUso: formData.unidadeUso,
+        categoria: formData.categoria,
+        precoUnitario: precoCalculado,
+      })
+
+      if (editingInsumo) {
+        await updateInsumo(editingInsumo.id, {
+          nome: formData.nome,
+          ingredienteBaseId: formData.ingredienteBaseId,
+          ingredienteBaseNome: ingredienteBase.nome,
+          quantidadeUso: quantidade,
+          unidadeUso: formData.unidadeUso,
+          categoria: formData.categoria,
+          precoUnitario: precoCalculado,
+        })
+        console.log("[v0] Insumo atualizado com sucesso")
+      } else {
+        await addInsumo({
+          nome: formData.nome,
+          ingredienteBaseId: formData.ingredienteBaseId,
+          ingredienteBaseNome: ingredienteBase.nome,
+          quantidadeUso: quantidade,
+          unidadeUso: formData.unidadeUso,
+          categoria: formData.categoria,
+          precoUnitario: precoCalculado,
+        })
+        console.log("[v0] Insumo criado com sucesso")
+      }
+
+      setFormData({
+        nome: "",
+        ingredienteBaseId: "",
+        quantidadeUso: "",
+        unidadeUso: "",
+        categoria: "",
+      })
+      setEditingInsumo(null)
+      setIsDialogOpen(false)
+    } catch (error) {
+      console.error("[v0] Erro ao submeter formulário de insumo:", error)
+      setError(error instanceof Error ? error.message : "Erro desconhecido ao salvar insumo")
+    } finally {
+      setIsSubmitting(false)
     }
-
-    const insumoData = {
-      nome: formData.nome,
-      ingredienteBaseId: formData.ingredienteBaseId,
-      ingredienteBaseNome: ingredienteBase.nome,
-      quantidadeUso: quantidade,
-      unidadeUso: formData.unidadeUso,
-      categoria: formData.categoria,
-      precoUnitario: precoCalculado,
-    }
-
-    if (editingInsumo) {
-      updateInsumo(editingInsumo.id, insumoData)
-    } else {
-      addInsumo(insumoData)
-    }
-
-    setFormData({
-      nome: "",
-      ingredienteBaseId: "",
-      quantidadeUso: "",
-      unidadeUso: "",
-      categoria: "",
-    })
-    setEditingInsumo(null)
-    setIsDialogOpen(false)
   }
 
   const handleEdit = (insumo: Insumo) => {
+    console.log("[v0] Editando insumo:", insumo)
     setEditingInsumo(insumo)
+    setError(null)
     setFormData({
       nome: insumo.nome,
       ingredienteBaseId: insumo.ingredienteBaseId,
@@ -128,18 +180,37 @@ export default function CadastroInsumosModule() {
     setIsDialogOpen(true)
   }
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm("Tem certeza que deseja excluir este insumo?")) {
-      deleteInsumo(id)
+      try {
+        console.log("[v0] Deletando insumo:", id)
+        await deleteInsumo(id)
+        console.log("[v0] Insumo deletado com sucesso")
+      } catch (error) {
+        console.error("[v0] Erro ao deletar insumo:", error)
+        setError("Erro ao excluir insumo")
+      }
     }
   }
 
   const totalInsumos = insumos.length
-  const valorTotalEstoque = insumos.reduce((total, insumo) => total + insumo.precoUnitario, 0)
+  const valorTotalEstoque = insumos.reduce((total, insumo) => total + (insumo.precoUnitario || 0), 0)
 
   return (
     <div className="space-y-6">
-      {/* Header com resumo */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex">
+            <div className="text-red-800">
+              <strong>Erro:</strong> {error}
+            </div>
+            <button onClick={() => setError(null)} className="ml-auto text-red-600 hover:text-red-800">
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -177,7 +248,6 @@ export default function CadastroInsumosModule() {
         </Card>
       </div>
 
-      {/* Botão para adicionar novo insumo */}
       <div className="flex justify-between items-center">
         <div>
           <h3 className="text-lg font-semibold">Insumos para Produtos</h3>
@@ -191,6 +261,7 @@ export default function CadastroInsumosModule() {
             <Button
               onClick={() => {
                 setEditingInsumo(null)
+                setError(null)
                 setFormData({
                   nome: "",
                   ingredienteBaseId: "",
@@ -312,27 +383,37 @@ export default function CadastroInsumosModule() {
                         if (!ingredienteBase) return null
 
                         const quantidade = Number.parseFloat(formData.quantidadeUso || "0")
+                        const precoUnitarioBase = ingredienteBase.preco_unitario || 0
                         let custoCalculado = 0
 
+                        if (precoUnitarioBase <= 0) {
+                          return (
+                            <p className="text-red-600">
+                              <strong>Atenção:</strong> O ingrediente base "{ingredienteBase.nome}" não possui preço
+                              unitário válido.
+                            </p>
+                          )
+                        }
+
                         if (ingredienteBase.unidade === "kg" && formData.unidadeUso === "g") {
-                          custoCalculado = (ingredienteBase.precoUnitario * quantidade) / 1000
+                          custoCalculado = (precoUnitarioBase * quantidade) / 1000
                         } else if (ingredienteBase.unidade === "L" && formData.unidadeUso === "ml") {
-                          custoCalculado = (ingredienteBase.precoUnitario * quantidade) / 1000
+                          custoCalculado = (precoUnitarioBase * quantidade) / 1000
                         } else if (ingredienteBase.unidade === "g" && formData.unidadeUso === "g") {
-                          custoCalculado = ingredienteBase.precoUnitario * quantidade
+                          custoCalculado = precoUnitarioBase * quantidade
                         } else if (ingredienteBase.unidade === "ml" && formData.unidadeUso === "ml") {
-                          custoCalculado = ingredienteBase.precoUnitario * quantidade
+                          custoCalculado = precoUnitarioBase * quantidade
                         } else if (
                           ["unidade", "fatia", "porção", "pacote", "lata", "garrafa", "caixa", "fardo"].includes(
                             ingredienteBase.unidade,
                           ) &&
                           ["unidade", "fatia", "porção"].includes(formData.unidadeUso)
                         ) {
-                          custoCalculado = ingredienteBase.precoUnitario * quantidade
+                          custoCalculado = precoUnitarioBase * quantidade
                         } else if (ingredienteBase.unidade === formData.unidadeUso) {
-                          custoCalculado = ingredienteBase.precoUnitario * quantidade
+                          custoCalculado = precoUnitarioBase * quantidade
                         } else {
-                          custoCalculado = ingredienteBase.precoUnitario * quantidade
+                          custoCalculado = precoUnitarioBase * quantidade
                         }
 
                         return (
@@ -350,14 +431,15 @@ export default function CadastroInsumosModule() {
                 )}
               </div>
               <DialogFooter>
-                <Button type="submit">{editingInsumo ? "Salvar Alterações" : "Criar Insumo"}</Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? "Salvando..." : editingInsumo ? "Salvar Alterações" : "Criar Insumo"}
+                </Button>
               </DialogFooter>
             </form>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* Tabela de insumos */}
       <Card>
         <CardContent className="p-0">
           {insumos.length === 0 ? (
@@ -391,7 +473,7 @@ export default function CadastroInsumosModule() {
                       <Badge variant="secondary">{insumo.categoria}</Badge>
                     </TableCell>
                     <TableCell className="text-right font-mono">
-                      {insumo.precoUnitario.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                      {(insumo.precoUnitario || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                     </TableCell>
                     <TableCell className="text-center">
                       <div className="flex justify-center space-x-2">

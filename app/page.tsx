@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
@@ -21,10 +21,10 @@ import {
   Zap,
   HelpCircle,
   MessageCircle,
-  Loader2,
   Database,
+  RefreshCw,
 } from "lucide-react"
-import { useDatabasePricing } from "@/components/database-pricing-context"
+import { usePricing } from "@/components/pricing-context-supabase"
 import CustosFixosModule from "@/components/modules/custos-fixos"
 import CustosVariaveisModule from "@/components/modules/custos-variaveis"
 import CadastroInsumosModule from "@/components/modules/cadastro-insumos"
@@ -43,11 +43,11 @@ import RelacaoProdutosModule from "@/components/modules/relacao-produtos"
 import ControleEstoqueModule from "@/components/modules/controle-estoque"
 import IngredientesBaseModule from "@/components/modules/ingredientes-base"
 import PrecificacaoAutomaticaModule from "@/components/modules/precificacao-automatica"
-import AjudaTutorialModule from "@/components/modules/ajuda-tutorial"
-import AutoAtendimentoWhatsAppModule from "@/components/modules/auto-atendimento-whatsapp"
-import DatabaseConnectionTest from "@/components/database-connection-test"
-import DatabaseTablesList from "@/components/database-tables-list"
-import DatabaseTablesOverview from "@/components/database-tables-overview"
+import AjudaTutorialModule from "@/components/modules/ajuda-tutorial" // Added import for help tutorial module
+import AutoAtendimentoWhatsAppModule from "@/components/modules/auto-atendimento-whatsapp" // Added import for WhatsApp module
+import DiagnosticoBDModule from "@/components/modules/diagnostico-bd" // Added import for database diagnostic module
+import LoadingScreen from "@/components/loading-screen"
+import MigrationHelper from "@/components/migration-helper"
 
 // Tipos para o sistema
 export interface CustoFixo {
@@ -92,11 +92,17 @@ export interface Produto {
 export interface Bebida {
   id: string
   nome: string
-  custoUnitario: number
+  tamanho?: string
+  custo_unitario: number // Updated to match database field name
   markup: number
-  precoVenda: number
-  foto?: string
+  preco_venda: number // Updated to match database field name
+  imagem_url?: string // Updated to match database field name
   descricao?: string
+  preco_ifood?: number // Added new field
+  lucro_unitario?: number // Added new field
+  ativo?: boolean
+  created_at?: string
+  updated_at?: string
 }
 
 export interface Combo {
@@ -112,11 +118,36 @@ export interface Combo {
   personalizacoesPermitidas?: string[]
 }
 
+export interface Venda {
+  id: string
+  numero_pedido: string
+  cliente_nome?: string
+  cliente_telefone?: string
+  cliente_endereco?: string
+  total: number
+  taxa_entrega: number
+  forma_pagamento: string
+  status: string
+  observacoes?: string
+  data_venda: string
+  created_at: string
+  updated_at: string
+}
+
+export interface Notificacao {
+  id: string
+  titulo: string
+  mensagem: string
+  tipo: string
+  lida: boolean
+  created_at: string
+}
+
 const modules = [
   {
-    id: "database-test",
-    title: "Teste de Conexão BD",
-    description: "Teste a conexão com o banco de dados Cartago BD e verifique se todas as tabelas estão funcionando.",
+    id: "diagnostico-bd",
+    title: "Diagnóstico do Banco",
+    description: "Verifique a conexão com o banco de dados e visualize os dados existentes em todas as tabelas.",
     icon: Database,
     color: "bg-slate-600",
   },
@@ -256,34 +287,93 @@ const modules = [
     icon: Package,
     color: "bg-amber-500",
   },
+  {
+    id: "migration",
+    title: "Migração de Dados",
+    description: "Ajuda na migração de dados para o novo sistema.",
+    icon: Database,
+    color: "bg-gray-500",
+  },
 ]
 
 export default function DeliveryPricingSystem() {
   const [activeModule, setActiveModule] = useState<string | null>(null)
-  const { getTotalCustosFixos, produtos, getTotalCustosVariaveis, insumos, bebidas, combos, vendas, loading, error } =
-    useDatabasePricing()
+  const [isRefreshing, setIsRefreshing] = useState(false) // Added refresh state
+  const {
+    getTotalCustosFixos,
+    produtos,
+    getTotalCustosVariaveis,
+    bebidas,
+    combos,
+    vendas,
+    estoqueInsumos,
+    loading,
+    refreshData,
+    refreshDataSilent, // Added silent refresh function
+  } = usePricing()
 
-  const totalVendas = vendas?.reduce((acc, venda) => acc + venda.total, 0) || 0
-  const vendasHoje =
+  useEffect(() => {
+    const interval = setInterval(() => {
+      console.log("[v0] Auto-refreshing data silently...")
+      refreshDataSilent() // Using silent refresh to avoid loading screen
+    }, 60000) // 60 seconds = 1 minute
+
+    return () => clearInterval(interval)
+  }, [refreshDataSilent])
+
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true)
+    console.log("[v0] Manual refresh triggered")
+    await refreshData() // Manual refresh shows loading
+    setTimeout(() => setIsRefreshing(false), 1000)
+  }
+
+  console.log("[v0] Component rendered, activeModule:", activeModule)
+  console.log("[v0] Dados de vendas:", vendas)
+  console.log("[v0] Quantidade de vendas:", vendas?.length || 0)
+
+  if (loading) {
+    return <LoadingScreen />
+  }
+
+  const totalVendas =
+    vendas?.reduce((acc, venda) => {
+      console.log("[v0] Processando venda:", venda.numero_pedido, "Total:", venda.total)
+      return acc + venda.total
+    }, 0) || 0
+
+  const hoje = new Date().toDateString()
+  const vendasHojeArray =
     vendas?.filter((venda) => {
-      const hoje = new Date().toDateString()
-      return new Date(venda.data).toDateString() === hoje
-    }).length || 0
+      const dataVenda = new Date(venda.data_venda).toDateString()
+      console.log("[v0] Comparando datas - Hoje:", hoje, "Venda:", dataVenda, "Match:", dataVenda === hoje)
+      return dataVenda === hoje
+    }) || []
+
+  const vendasHojeTotal = vendasHojeArray.reduce((acc, venda) => acc + venda.total, 0)
+  const quantidadeVendasHoje = vendasHojeArray.length
+
+  console.log("[v0] Total vendas calculado:", totalVendas)
+  console.log("[v0] Vendas hoje total:", vendasHojeTotal)
+  console.log("[v0] Quantidade vendas hoje:", quantidadeVendasHoje)
+
+  const custosVariaveisPercentual = getTotalCustosVariaveis()
+  const custosVariaveisValidos = Number.isFinite(custosVariaveisPercentual) ? custosVariaveisPercentual : 0
+
+  const custosFixosTotal = getTotalCustosFixos()
+  const custosFixosValidos = Number.isFinite(custosFixosTotal) ? custosFixosTotal : 0
 
   const handleModuleClick = (moduleId: string) => {
+    console.log("[v0] Module clicked:", moduleId)
     setActiveModule(moduleId)
+    console.log("[v0] Active module set to:", moduleId)
   }
 
   const renderModuleContent = () => {
+    console.log("[v0] Rendering module content for:", activeModule)
     switch (activeModule) {
-      case "database-test":
-        return (
-          <div className="space-y-6">
-            <DatabaseTablesOverview />
-            <DatabaseTablesList />
-            <DatabaseConnectionTest />
-          </div>
-        )
+      case "diagnostico-bd":
+        return <DiagnosticoBDModule />
       case "dashboard-executivo":
         return <DashboardExecutivoModule />
       case "precificacao-automatica":
@@ -324,6 +414,8 @@ export default function DeliveryPricingSystem() {
         return <RelacaoProdutosModule />
       case "controle-estoque":
         return <ControleEstoqueModule />
+      case "migration":
+        return <MigrationHelper />
       default:
         return (
           <Card>
@@ -336,33 +428,6 @@ export default function DeliveryPricingSystem() {
           </Card>
         )
     }
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Carregando dados do sistema...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Card className="max-w-md">
-          <CardHeader>
-            <CardTitle className="text-red-600">Erro ao carregar dados</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground mb-4">{error}</p>
-            <Button onClick={() => window.location.reload()}>Tentar novamente</Button>
-          </CardContent>
-        </Card>
-      </div>
-    )
   }
 
   return (
@@ -379,7 +444,27 @@ export default function DeliveryPricingSystem() {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={handleManualRefresh}
+                disabled={isRefreshing}
+                className="flex items-center gap-2 bg-transparent"
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+                {isRefreshing ? "Atualizando..." : "Atualizar"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setActiveModule("migration")}
+                className="flex items-center gap-2"
+              >
+                <Database className="h-4 w-4" />
+                Migração
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => {
+                  console.log("[v0] Data management button clicked")
                   setActiveModule("data-management")
                 }}
                 className="flex items-center gap-2"
@@ -408,7 +493,7 @@ export default function DeliveryPricingSystem() {
                     <div className="text-2xl font-bold">
                       {totalVendas.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                     </div>
-                    <p className="text-xs text-muted-foreground">Faturamento total</p>
+                    <p className="text-xs text-muted-foreground">{vendas?.length || 0} vendas • Faturamento total</p>
                   </CardContent>
                 </Card>
 
@@ -418,8 +503,10 @@ export default function DeliveryPricingSystem() {
                     <Receipt className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{vendasHoje}</div>
-                    <p className="text-xs text-muted-foreground">Pedidos hoje</p>
+                    <div className="text-2xl font-bold">
+                      {vendasHojeTotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                    </div>
+                    <p className="text-xs text-muted-foreground">{quantidadeVendasHoje} vendas • Faturamento hoje</p>
                   </CardContent>
                 </Card>
 
@@ -441,7 +528,7 @@ export default function DeliveryPricingSystem() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">
-                      {getTotalCustosFixos().toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                      {custosFixosValidos.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                     </div>
                     <p className="text-xs text-muted-foreground">Mensais</p>
                   </CardContent>
@@ -453,7 +540,7 @@ export default function DeliveryPricingSystem() {
                     <Target className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{getTotalCustosVariaveis().toFixed(1)}%</div>
+                    <div className="text-2xl font-bold">{custosVariaveisValidos.toFixed(1)}%</div>
                     <p className="text-xs text-muted-foreground">Do faturamento</p>
                   </CardContent>
                 </Card>
@@ -464,12 +551,12 @@ export default function DeliveryPricingSystem() {
                       <div className="p-2 rounded-lg bg-purple-500">
                         <Package className="h-5 w-5 text-white" />
                       </div>
-                      <CardTitle className="text-lg">Ingredientes</CardTitle>
+                      <CardTitle className="text-lg">Itens Estoque</CardTitle>
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{insumos?.length || 0}</div>
-                    <p className="text-xs text-muted-foreground">Ingredientes cadastrados</p>
+                    <div className="text-2xl font-bold">{estoqueInsumos?.length || 0}</div>
+                    <p className="text-xs text-muted-foreground">Insumos controlados</p>
                   </CardContent>
                 </Card>
               </div>
@@ -484,6 +571,7 @@ export default function DeliveryPricingSystem() {
                     key={module.id}
                     className="cursor-pointer hover:shadow-lg transition-shadow duration-200"
                     onClick={() => {
+                      console.log("[v0] Card clicked for module:", module.id)
                       handleModuleClick(module.id)
                     }}
                   >
@@ -502,6 +590,7 @@ export default function DeliveryPricingSystem() {
                         variant="outline"
                         onClick={(e) => {
                           e.stopPropagation()
+                          console.log("[v0] Button clicked for module:", module.id)
                           handleModuleClick(module.id)
                         }}
                       >
@@ -519,11 +608,14 @@ export default function DeliveryPricingSystem() {
               <h2 className="text-2xl font-bold">
                 {activeModule === "data-management"
                   ? "Gerenciamento de Dados"
-                  : modules.find((m) => m.id === activeModule)?.title}
+                  : activeModule === "migration"
+                    ? "Migração de Dados"
+                    : modules.find((m) => m.id === activeModule)?.title}
               </h2>
               <Button
                 variant="outline"
                 onClick={() => {
+                  console.log("[v0] Back button clicked")
                   setActiveModule(null)
                 }}
               >

@@ -23,7 +23,7 @@ import {
   Filter,
   AlertTriangle,
 } from "lucide-react"
-import { useDatabasePricing } from "@/components/database-pricing-context"
+import { usePricing } from "@/components/pricing-context-supabase"
 
 interface ItemVenda {
   id: string
@@ -61,7 +61,7 @@ export default function VendasModule() {
     getEstoqueAtualInsumo,
     baixarEstoquePorVenda,
     getInsumosComEstoqueBaixo,
-  } = useDatabasePricing()
+  } = usePricing()
 
   const [carrinho, setCarrinho] = useState<ItemVenda[]>([])
   const [vendas, setVendas] = useState<Venda[]>(() => {
@@ -189,9 +189,8 @@ export default function VendasModule() {
     return cats.sort()
   }, [itensDisponiveis])
 
-  // Cálculos do carrinho
-  const subtotal = carrinho.reduce((sum, item) => sum + item.preco * item.quantidade, 0)
-  const total = subtotal - desconto + frete
+  const subtotal = carrinho.reduce((sum, item) => sum + ((item.preco || 0) * (item.quantidade || 0)), 0)
+  const total = Math.max(0, (subtotal || 0) - (desconto || 0) + (frete || 0))
 
   const adicionarAoCarrinho = (item: (typeof itensDisponiveis)[0]) => {
     const itemExistente = carrinho.find((c) => c.id === item.id && c.tipo === item.tipo)
@@ -377,7 +376,7 @@ export default function VendasModule() {
       const vendaData = new Date(v.data).toDateString()
       return vendaData === hoje && v.status !== "cancelado"
     })
-    .reduce((sum, v) => sum + v.total, 0)
+    .reduce((sum, v) => sum + (v.total || 0), 0)
 
   const vendasHoje = vendas.filter((v) => {
     const hoje = new Date().toDateString()
@@ -447,7 +446,7 @@ export default function VendasModule() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {totalVendasHoje.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+              {(totalVendasHoje || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
             </div>
             <p className="text-xs text-muted-foreground">Valor total</p>
           </CardContent>
@@ -471,7 +470,7 @@ export default function VendasModule() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+              {(total || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
             </div>
             <p className="text-xs text-muted-foreground">Valor a receber</p>
           </CardContent>
@@ -537,7 +536,7 @@ export default function VendasModule() {
                             </div>
                             <div className="text-right">
                               <p className="font-bold text-green-600">
-                                {item.preco.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                                {(item.preco || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                               </p>
                             </div>
                           </div>
@@ -576,7 +575,7 @@ export default function VendasModule() {
                           <div className="flex-1">
                             <p className="font-medium text-sm">{item.nome}</p>
                             <p className="text-xs text-muted-foreground">
-                              {item.preco.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} cada
+                              {(item.preco || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} cada
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
@@ -708,24 +707,24 @@ export default function VendasModule() {
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span>Subtotal:</span>
-                      <span>{subtotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+                      <span>{/* Adding safety check for toLocaleString */(subtotal || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
                     </div>
-                    {desconto > 0 && (
+                    {(desconto || 0) > 0 && (
                       <div className="flex justify-between text-red-600">
                         <span>Desconto:</span>
-                        <span>-{desconto.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+                        <span>-{(desconto || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
                       </div>
                     )}
-                    {frete > 0 && (
+                    {(frete || 0) > 0 && (
                       <div className="flex justify-between">
                         <span>Frete:</span>
-                        <span>{frete.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+                        <span>{(frete || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
                       </div>
                     )}
                     <Separator />
                     <div className="flex justify-between font-bold text-lg">
                       <span>Total:</span>
-                      <span>{total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+                      <span>{/* Adding safety check for toLocaleString */(total || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
                     </div>
                   </div>
 
@@ -767,7 +766,7 @@ export default function VendasModule() {
                           <div className="text-right">
                             <Badge className={getStatusColor(venda.status)}>{venda.status}</Badge>
                             <p className="font-bold text-lg mt-1">
-                              {venda.total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                              {(venda.total || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                             </p>
                           </div>
                         </div>
@@ -779,7 +778,7 @@ export default function VendasModule() {
                                 {item.quantidade}x {item.nome}
                               </span>
                               <span>
-                                {(item.preco * item.quantidade).toLocaleString("pt-BR", {
+                                {((item.preco || 0) * (item.quantidade || 0)).toLocaleString("pt-BR", {
                                   style: "currency",
                                   currency: "BRL",
                                 })}
@@ -831,66 +830,4 @@ export default function VendasModule() {
                 <CardTitle className="text-sm">Faturamento Total</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
-                  {vendas
-                    .filter((v) => v.status !== "cancelado")
-                    .reduce((sum, v) => sum + v.total, 0)
-                    .toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                </div>
-                <p className="text-xs text-muted-foreground">Valor total</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Ticket Médio</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {vendas.filter((v) => v.status !== "cancelado").length > 0
-                    ? (
-                        vendas.filter((v) => v.status !== "cancelado").reduce((sum, v) => sum + v.total, 0) /
-                        vendas.filter((v) => v.status !== "cancelado").length
-                      ).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
-                    : "R$ 0,00"}
-                </div>
-                <p className="text-xs text-muted-foreground">Por pedido</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Taxa de Cancelamento</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {vendas.length > 0
-                    ? ((vendas.filter((v) => v.status === "cancelado").length / vendas.length) * 100).toFixed(1)
-                    : "0"}
-                  %
-                </div>
-                <p className="text-xs text-muted-foreground">Pedidos cancelados</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Produtos Mais Vendidos</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {vendas.length === 0 ? (
-                <p className="text-muted-foreground text-center py-4">Nenhuma venda para análise</p>
-              ) : (
-                <div className="space-y-2">
-                  {/* Aqui você pode implementar a lógica para mostrar produtos mais vendidos */}
-                  <p className="text-muted-foreground">Relatório em desenvolvimento...</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
-  )
-}
+                <div className=\"text-2xl

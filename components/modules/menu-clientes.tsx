@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { useDatabasePricing } from "@/components/database-pricing-context"
+import { usePricing } from "@/components/pricing-context-supabase"
 import {
   Search,
   Plus,
@@ -59,16 +59,47 @@ interface Personalizacao {
   categorias?: string[]
 }
 
+interface DadosEmpresa {
+  nome: string
+  telefone: string
+  endereco: string
+  cidade: string
+  estado: string
+  logo_url?: string
+  cor_primaria: string
+  cor_secundaria: string
+  descricao?: string
+  horario_funcionamento?: string
+  redes_sociais?: {
+    instagram?: string
+    facebook?: string
+    whatsapp?: string
+  }
+}
+
 export default function MenuClientesModule() {
-  const { produtos, bebidas, combos, adicionais, personalizacoes } = useDatabasePricing()
+  const { produtos, bebidas, combos, adicionais, personalizacoes } = usePricing()
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("Todos")
 
   const [insumos, setInsumos] = useState<any[]>([])
   const [abaterEstoquePorVenda, setAbaterEstoquePorVenda] = useState<any>(null)
 
-  console.log("[v0] Combos carregados:", combos)
-  console.log("[v0] Bebidas carregadas:", bebidas)
+  const [dadosEmpresa, setDadosEmpresa] = useState<DadosEmpresa>({
+    nome: "Minha Empresa",
+    telefone: "(11) 99999-9999",
+    endereco: "Rua Principal, 123",
+    cidade: "São Paulo",
+    estado: "SP",
+    cor_primaria: "#dc2626",
+    cor_secundaria: "#f59e0b",
+    descricao: "Delivery de comida deliciosa",
+    horario_funcionamento: "Segunda a Sábado: 18h às 23h",
+  })
+
+  // console.log("[v0] Produtos carregados:", produtos?.length || 0, produtos)
+  // console.log("[v0] Combos carregados:", combos)
+  // console.log("[v0] Bebidas carregadas:", bebidas)
 
   const allMenuItems = [
     ...(produtos || []).map((item) => ({ ...item, type: "produto" as const })),
@@ -84,7 +115,6 @@ export default function MenuClientesModule() {
     // Sempre adicionar Combos e Bebidas como categorias fixas
     baseCategorias.push("Combos", "Bebidas")
 
-    // Adicionar outras categorias que têm produtos cadastrados
     const categoriasComProdutos = new Set()
     allMenuItems.forEach((item) => {
       if (item.type === "produto" && item.categoria) {
@@ -92,26 +122,13 @@ export default function MenuClientesModule() {
       }
     })
 
-    // Adicionar categorias fixas que têm produtos (exceto Combos e Bebidas que já foram adicionadas)
-    const categoriasFixas = ["Hambúrgueres", "Batatas"]
-    categoriasFixas.forEach((categoria) => {
-      if (categoriasComProdutos.has(categoria)) {
-        baseCategorias.push(categoria)
-      }
-    })
-
-    // Adicionar outras categorias que têm produtos
     Array.from(categoriasComProdutos).forEach((categoria) => {
-      if (
-        !baseCategorias.includes(categoria) &&
-        !categoriasFixas.includes(categoria) &&
-        !categoriasPromocionais.includes(categoria)
-      ) {
+      if (!baseCategorias.includes(categoria) && !categoriasPromocionais.includes(categoria)) {
         baseCategorias.push(categoria)
       }
     })
 
-    console.log("[v0] Categorias disponíveis:", baseCategorias)
+    console.log("[v0] Categorias:", baseCategorias.length)
     return baseCategorias
   }
 
@@ -146,6 +163,22 @@ export default function MenuClientesModule() {
     valorFrete: 5.0,
     valorMinimoFreteGratis: 30.0,
   })
+
+  useEffect(() => {
+    const carregarDadosEmpresa = async () => {
+      try {
+        const response = await fetch("/api/empresa/dados-publicos")
+        if (response.ok) {
+          const dados = await response.json()
+          setDadosEmpresa(dados)
+        }
+      } catch (error) {
+        console.error("[v0] Erro ao carregar dados da empresa:", error)
+      }
+    }
+
+    carregarDadosEmpresa()
+  }, [])
 
   useEffect(() => {
     const carregarConfiguracaoFrete = () => {
@@ -235,7 +268,7 @@ export default function MenuClientesModule() {
   }
 
   const getProductIngredients = (produto: any) => {
-    console.log("[v0] Obtendo ingredientes do produto:", produto.nome, produto.insumos)
+    // console.log("[v0] Obtendo ingredientes do produto:", produto.nome, produto.insumos)
     if (!produto.insumos) return []
 
     return produto.insumos
@@ -255,7 +288,7 @@ export default function MenuClientesModule() {
   }
 
   const addToCart = (itemId: string, customizations?: { removed: string[]; added: string[] }, comments?: string) => {
-    console.log("[v0] Adicionando ao carrinho:", itemId, customizations, comments)
+    console.log("[v0] Item adicionado:", itemId.split("-")[0])
     const cartKey = getCartKey(itemId, customizations, comments)
 
     setCart((prev) => {
@@ -273,7 +306,7 @@ export default function MenuClientesModule() {
   }
 
   const removeFromCart = (itemId: string) => {
-    console.log("[v0] Removendo do carrinho:", itemId)
+    console.log("[v0] Item removido:", itemId.split("-")[0])
     setCart((prev) => {
       const newCart = { ...prev }
       if (newCart[itemId] && newCart[itemId].quantity > 1) {
@@ -295,7 +328,7 @@ export default function MenuClientesModule() {
 
         if (cartItem.customizations?.added) {
           cartItem.customizations.added.forEach((adicionadoNome) => {
-            const adicional = adicionais.find((a) => a.nome === adicionadoNome)
+            const adicional = (adicionais || []).find((a) => a.nome === adicionadoNome)
             if (adicional) {
               const adicionalTotal = adicional.preco * cartItem.quantity
               itemTotal += adicionalTotal
@@ -320,7 +353,7 @@ export default function MenuClientesModule() {
       return
     }
 
-    console.log("[v0] Abrindo modal de customização")
+    // console.log("[v0] Abrindo modal de customização")
     setSelectedItem(item)
     setIsCustomizeOpen(true)
     setModalQuantity(1)
@@ -346,7 +379,7 @@ export default function MenuClientesModule() {
     let additionalsPrice = 0
 
     addedIngredients.forEach((adicionadoNome) => {
-      const adicional = adicionais.find((a) => a.nome === adicionadoNome)
+      const adicional = (adicionais || []).find((a) => a.nome === adicionadoNome)
       if (adicional) {
         additionalsPrice += adicional.preco
       }
@@ -356,14 +389,7 @@ export default function MenuClientesModule() {
   }
 
   const confirmCustomization = () => {
-    console.log("[v0] Confirmando customização:", {
-      item: selectedItem?.nome,
-      removed: removedIngredients,
-      added: addedIngredients,
-      personalizacoes: selectedPersonalizacoes,
-      quantity: modalQuantity,
-      comments: modalComments,
-    })
+    console.log("[v0] Customização confirmada:", selectedItem?.nome)
 
     if (selectedItem) {
       const itemKey = getItemKey(selectedItem)
@@ -436,19 +462,38 @@ export default function MenuClientesModule() {
   }
 
   const getItemPrice = (item: any) => {
-    if (item.type === "produto") return item.precoVenda
-    if (item.type === "bebida") return item.precoVenda
-    if (item.type === "combo") return item.precoFinal
+    if (item.type === "produto") {
+      // Tentar diferentes campos de preço para produtos
+      return item.precoVenda || item.preco_venda || item.precoIfood || item.preco_ifood || 0
+    }
+    if (item.type === "bebida") {
+      // Tentar diferentes campos de preço para bebidas
+      return item.preco_venda || item.precoVenda || item.precoIfood || item.preco_ifood || 0
+    }
+    if (item.type === "combo") {
+      // Para combos, usar precoFinal ou preco_final
+      return item.precoFinal || item.preco_final || 0
+    }
     return 0
   }
 
   const getItemImage = (item: any) => {
-    if (item.foto && typeof item.foto === "string") {
-      if (item.foto.startsWith("http://") || item.foto.startsWith("https://")) {
-        return item.foto
+    let imageField = null
+
+    if (item.type === "bebida") {
+      // Para bebidas, usar imagemUrl ou imagem_url
+      imageField = item.imagemUrl || item.imagem_url
+    } else {
+      // Para produtos e combos, usar foto
+      imageField = item.foto
+    }
+
+    if (imageField && typeof imageField === "string") {
+      if (imageField.startsWith("http://") || imageField.startsWith("https://")) {
+        return imageField
       }
-      if (item.foto.startsWith("data:image/")) {
-        return item.foto
+      if (imageField.startsWith("data:image/")) {
+        return imageField
       }
     }
 
@@ -459,23 +504,72 @@ export default function MenuClientesModule() {
   const getItemKey = (item: any) => `${item.type}-${item.id}`
 
   const finalizarPedido = async () => {
-    const itensCarrinho = Object.entries(cart).map(([itemKey, { quantity, customizations, comments }]) => {
-      const [categoria, nome] = itemKey.split(":")
-      const produto = produtos?.find((p) => p.categoria === categoria && p.nome === nome)
-
-      return {
-        nome,
-        categoria,
-        preco: produto?.preco || 0,
-        quantidade: quantity,
-        personalizacoes: customizations,
-        observacoes: comments || "", // Adicionando comentários como observações
+    const itensFormatados = Object.entries(cart).map(([cartKey, cartItem]) => {
+      // Melhor lógica para encontrar o item original
+      let itemId = cartItem.originalItemId
+      if (!itemId) {
+        // Fallback: extrair ID do carrinho
+        const parts = cartKey.split("-")
+        if (parts.length >= 2) {
+          itemId = `${parts[0]}-${parts[1]}`
+        } else {
+          itemId = cartKey
+        }
       }
+
+      const item = allMenuItems.find((i) => `${i.type}-${i.id}` === itemId)
+
+      if (!item) {
+        console.error("[v0] Item não encontrado:", itemId.split("-")[0])
+        // Retornar um item padrão para não quebrar o pedido
+        return {
+          id: itemId,
+          nome: "Item não encontrado",
+          preco: 0,
+          quantidade: cartItem.quantity,
+          tipo: "produto",
+          observacoes: cartItem.comments || "",
+          personalizacoes: {
+            removidos: cartItem.customizations?.removed || [],
+            adicionados: cartItem.customizations?.added || [],
+          },
+        }
+      }
+
+      let precoItem = getItemPrice(item)
+
+      // Adicionar preço dos adicionais
+      if (cartItem.customizations?.added) {
+        cartItem.customizations.added.forEach((adicionadoNome) => {
+          const adicional = (adicionais || []).find((a) => a.nome === adicionadoNome)
+          if (adicional) {
+            precoItem += adicional.preco
+          }
+        })
+      }
+
+      const itemFormatado = {
+        id: item.id,
+        nome: item.nome,
+        preco: precoItem,
+        quantidade: cartItem.quantity,
+        tipo: item.type,
+        observacoes: cartItem.comments || "",
+        personalizacoes: {
+          removidos: cartItem.customizations?.removed || [],
+          adicionados: cartItem.customizations?.added || [],
+        },
+      }
+
+      console.log("[v0] Item formatado:", item.nome, "x" + cartItem.quantity)
+      return itemFormatado
     })
 
     console.log("[v0] Iniciando finalização do pedido")
-    console.log("[v0] Forma de pagamento capturada:", customerData.formaPagamento)
+    console.log("[v0] Forma de pagamento:", customerData.formaPagamento)
+    console.log("[v0] Itens:", itensFormatados.length)
 
+    // Validação dos dados obrigatórios
     if (!customerData.nome?.trim()) {
       alert("Por favor, preencha o nome completo!")
       return
@@ -494,42 +588,9 @@ export default function MenuClientesModule() {
     }
 
     const pedidoId = `PED${Date.now()}`
-    console.log("[v0] ID do pedido gerado:", pedidoId)
+    console.log("[v0] ID do pedido:", pedidoId)
 
     try {
-      const itensFormatados = Object.entries(cart).map(([cartKey, cartItem]) => {
-        const itemId = (cartItem as any).originalItemId || cartKey.split("-")[0] + "-" + cartKey.split("-")[1]
-        const item = allMenuItems.find((i) => `${i.type}-${i.id}` === itemId)
-
-        let precoItem = getItemPrice(item!)
-        if (cartItem.customizations?.added) {
-          cartItem.customizations.added.forEach((adicionadoNome) => {
-            const adicional = adicionais.find((a) => a.nome === adicionadoNome)
-            if (adicional) {
-              precoItem += adicional.preco
-            }
-          })
-        }
-
-        const itemFormatado = {
-          id: item?.id || itemId,
-          nome: item?.nome || "Item não encontrado",
-          preco: precoItem,
-          quantidade: cartItem.quantity,
-          tipo: item?.type || "produto",
-          observacoes: cartItem.comments || "",
-          personalizacoes: cartItem.customizations
-            ? {
-                removidos: cartItem.customizations.removed || [],
-                adicionados: cartItem.customizations.added || [],
-              }
-            : { removidos: [], adicionados: [] },
-        }
-
-        console.log("[v0] Item formatado:", JSON.stringify(itemFormatado))
-        return itemFormatado
-      })
-
       const subtotal = getCartTotal()
       const frete = calcularFrete(subtotal)
 
@@ -555,22 +616,40 @@ export default function MenuClientesModule() {
         tempoEstimado: 35,
       }
 
-      console.log("[v0] Forma de pagamento no objeto pedido:", pedido.formaPagamento)
-      console.log("[v0] Pedido completo:", JSON.stringify(pedido))
+      console.log("[v0] Pedido criado:", pedidoId, "Total:", subtotal + frete)
 
-      try {
-        const pedidosExistentes = JSON.parse(localStorage.getItem("delivery-pricing-controle-producao") || "[]")
-        pedidosExistentes.unshift(pedido)
-        localStorage.setItem("delivery-pricing-controle-producao", JSON.stringify(pedidosExistentes))
-        console.log("[v0] Pedido salvo no controle de produção:", pedidoId)
+      const response = await fetch("/api/pedidos", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(pedido),
+      })
 
-        window.dispatchEvent(new CustomEvent("pedidoAdicionado", { detail: pedido }))
-      } catch (error) {
-        console.error("[v0] Erro crítico ao salvar pedido no controle de produção:", error)
-        alert("Erro crítico ao salvar pedido. Tente novamente.")
-        return
+      console.log("[v0] Status da resposta:", response.status)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error("[v0] Erro na API:", errorText.substring(0, 100))
+
+        let errorData
+        try {
+          errorData = JSON.parse(errorText)
+        } catch {
+          errorData = { error: "Erro desconhecido", details: errorText }
+        }
+
+        console.error("[v0] Erro parsed:", errorData.error)
+        throw new Error(`Erro ao salvar pedido: ${errorData.details || errorData.error || "Erro desconhecido"}`)
       }
 
+      const pedidoSalvo = await response.json()
+      console.log("[v0] Pedido salvo:", pedidoSalvo.id)
+
+      // Disparar evento para atualizar outros componentes
+      window.dispatchEvent(new CustomEvent("pedidoAdicionado", { detail: pedido }))
+
+      // Salvar no sistema de pricing (opcional)
       const produtosParaBaixar = itensFormatados.filter((item) => item.tipo === "produto")
       if (produtosParaBaixar.length > 0) {
         const vendaParaSistema = {
@@ -588,28 +667,19 @@ export default function MenuClientesModule() {
           observacoes: customerData.observacoes?.trim() || "",
         }
 
-        console.log("[v0] Venda para sistema:", JSON.stringify(vendaParaSistema))
+        console.log("[v0] Venda para sistema:", pedidoId)
 
         try {
           const vendasExistentes = JSON.parse(localStorage.getItem("delivery-pricing-vendas") || "[]")
           vendasExistentes.unshift(vendaParaSistema)
           localStorage.setItem("delivery-pricing-vendas", JSON.stringify(vendasExistentes))
-          console.log("[v0] Venda salva no sistema de pricing")
+          console.log("[v0] Venda salva no sistema")
         } catch (error) {
-          console.error("[v0] Erro ao salvar venda no sistema (não-crítico):", error)
+          console.error("[v0] Erro ao salvar venda (não-crítico):", error)
         }
-
-        setTimeout(() => {
-          console.log("[v0] Iniciando abatimento de estoque para:", pedidoId)
-          try {
-            abaterEstoquePorVenda(pedidoId)
-            console.log("[v0] Processo de abatimento de estoque iniciado para pedido:", pedidoId)
-          } catch (error) {
-            console.warn("[v0] Aviso: Problema no abatimento de estoque (pedido já foi salvo):", error)
-          }
-        }, 2000)
       }
 
+      // Limpar dados após sucesso
       setCart({})
       setIsCheckoutOpen(false)
       setCustomerData({
@@ -621,18 +691,27 @@ export default function MenuClientesModule() {
         formaPagamento: "",
       })
 
-      console.log("[v0] Pedido finalizado com sucesso:", pedidoId)
+      console.log("[v0] Pedido finalizado:", pedidoId)
       alert(
         `Pedido #${pedido.id} realizado com sucesso! Você pode acompanhar o status usando seu número de pedido e telefone.`,
       )
     } catch (error) {
-      console.error("[v0] Erro geral na finalização do pedido:", error)
-      alert("Erro ao processar pedido. Tente novamente.")
+      console.error("[v0] Erro na finalização:", error)
+
+      // Melhor tratamento de erro para o usuário
+      let errorMessage = "Erro desconhecido"
+      if (error instanceof Error) {
+        errorMessage = error.message
+      } else if (typeof error === "string") {
+        errorMessage = error
+      }
+
+      alert(`Erro ao processar pedido: ${errorMessage}. Tente novamente ou entre em contato conosco.`)
     }
   }
 
   const renderProductCard = (item: any, isHighlight = false) => {
-    const imageUrl = item.imagem || "/delicious-food.png"
+    const imageUrl = getItemImage(item)
 
     return (
       <div
@@ -655,7 +734,7 @@ export default function MenuClientesModule() {
             className="w-full h-full object-cover transition-transform duration-200 hover:scale-105"
             onError={(e) => {
               const target = e.target as HTMLImageElement
-              target.src = "/delicious-food.png"
+              target.src = `/placeholder.svg?height=300&width=400&query=${encodeURIComponent(item.nome + " delicious food premium")}`
             }}
           />
           {isHighlight && (
@@ -670,7 +749,7 @@ export default function MenuClientesModule() {
           <p className="text-muted-foreground text-sm mb-3 line-clamp-2">{item.descricao}</p>
 
           <div className="flex items-center justify-between">
-            <span className="text-xl font-bold text-primary">R$ {item.preco?.toFixed(2) || "0.00"}</span>
+            <span className="text-xl font-bold text-primary">R$ {(getItemPrice(item) || 0).toFixed(2)}</span>
             <button
               className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-lg transition-all duration-200 ${
                 lojaAberta ? "bg-primary hover:bg-primary/90 hover:scale-110" : "bg-gray-400 cursor-not-allowed"
@@ -688,25 +767,29 @@ export default function MenuClientesModule() {
   const getAdicionaisParaCombo = (combo: any) => {
     if (!combo || !combo.adicionaisPermitidos) return []
 
-    return adicionais.filter((adicional) => combo.adicionaisPermitidos.includes(adicional.id))
+    return (adicionais || []).filter((adicional) => combo.adicionaisPermitidos.includes(adicional.id))
   }
 
   const getPersonalizacoesParaCombo = (combo: any) => {
     if (!combo || !combo.personalizacoesPermitidas) return []
 
-    return personalizacoes.filter((personalizacao) => combo.personalizacoesPermitidas.includes(personalizacao.id))
+    return (personalizacoes || []).filter((personalizacao) =>
+      combo.personalizacoesPermitidas.includes(personalizacao.id),
+    )
   }
 
   const getAdicionaisParaProduto = (produto: any) => {
     if (!produto || !produto.categoria) return []
 
-    return adicionais.filter((adicional) => adicional.categorias && adicional.categorias.includes(produto.categoria))
+    return (adicionais || []).filter(
+      (adicional) => adicional.categorias && adicional.categorias.includes(produto.categoria),
+    )
   }
 
   const getPersonalizacoesParaProduto = (produto: any) => {
     if (!produto || !produto.categoria) return []
 
-    return personalizacoes.filter(
+    return (personalizacoes || []).filter(
       (personalizacao) => personalizacao.categorias && personalizacao.categorias.includes(produto.categoria),
     )
   }
@@ -733,13 +816,21 @@ export default function MenuClientesModule() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center">
-                <ChefHat className="h-8 w-8 text-primary-foreground" />
+              <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center overflow-hidden">
+                {dadosEmpresa.logo_url ? (
+                  <img
+                    src={dadosEmpresa.logo_url || "/placeholder.svg"}
+                    alt={`Logo ${dadosEmpresa.nome}`}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <ChefHat className="h-8 w-8 text-primary-foreground" />
+                )}
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-foreground">Cartago Burger Grill</h1>
+                <h1 className="text-2xl font-bold text-foreground">{dadosEmpresa.nome}</h1>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <span>Hambúrgueres • Lanches • Delivery</span>
+                  <span>{dadosEmpresa.descricao || "Delivery de comida deliciosa"}</span>
                   <div className="flex items-center gap-1">
                     <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                     <span className="font-medium">4.8</span>
@@ -833,10 +924,10 @@ export default function MenuClientesModule() {
                       <div className="flex items-center justify-between">
                         <div className="flex flex-col">
                           <span className="text-xs text-muted-foreground line-through">
-                            {originalPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                            {(originalPrice || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                           </span>
                           <span className="text-lg font-bold text-red-600">
-                            {discountPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                            {(discountPrice || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                           </span>
                         </div>
                         <Button
@@ -900,13 +991,13 @@ export default function MenuClientesModule() {
                       )}
                       <div className="flex items-center gap-2 mb-2">
                         <span className="price-highlight">
-                          {discountPrice.toLocaleString("pt-BR", {
+                          {(discountPrice || 0).toLocaleString("pt-BR", {
                             style: "currency",
                             currency: "BRL",
                           })}
                         </span>
                         <span className="discount-price">
-                          {originalPrice.toLocaleString("pt-BR", {
+                          {(originalPrice || 0).toLocaleString("pt-BR", {
                             style: "currency",
                             currency: "BRL",
                           })}
@@ -978,7 +1069,7 @@ export default function MenuClientesModule() {
                     )}
                     <div className="flex items-center justify-between">
                       <span className="price-highlight">
-                        {getItemPrice(item).toLocaleString("pt-BR", {
+                        {(getItemPrice(item) || 0).toLocaleString("pt-BR", {
                           style: "currency",
                           currency: "BRL",
                         })}
@@ -1036,7 +1127,7 @@ export default function MenuClientesModule() {
                       )}
                       <div className="flex items-center justify-between">
                         <span className="price-highlight">
-                          {getItemPrice(item).toLocaleString("pt-BR", {
+                          {(getItemPrice(item) || 0).toLocaleString("pt-BR", {
                             style: "currency",
                             currency: "BRL",
                           })}
@@ -1084,6 +1175,12 @@ export default function MenuClientesModule() {
 
       <Dialog open={isCustomizeOpen} onOpenChange={setIsCustomizeOpen}>
         <DialogContent className="modal-ifood max-w-2xl bg-popover p-0">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Personalizar {selectedItem?.nome}</DialogTitle>
+            <DialogDescription>
+              Customize seu pedido adicionando ingredientes extras e personalizações
+            </DialogDescription>
+          </DialogHeader>
           <div className="relative">
             <div className="modal-image-container">
               {selectedItem && (
@@ -1115,11 +1212,19 @@ export default function MenuClientesModule() {
 
             <div className="p-6 space-y-6">
               <div className="flex items-center gap-3 pb-4 border-b border-border">
-                <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                  <ChefHat className="h-4 w-4 text-primary-foreground" />
+                <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center overflow-hidden">
+                  {dadosEmpresa.logo_url ? (
+                    <img
+                      src={dadosEmpresa.logo_url || "/placeholder.svg"}
+                      alt={`Logo ${dadosEmpresa.nome}`}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <ChefHat className="h-4 w-4 text-primary-foreground" />
+                  )}
                 </div>
                 <div>
-                  <p className="font-medium text-popover-foreground">Cartago Burger Grill</p>
+                  <p className="font-medium text-popover-foreground">{dadosEmpresa.nome}</p>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
                     <span>4.8</span>
@@ -1170,7 +1275,7 @@ export default function MenuClientesModule() {
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-primary font-medium">
-                            + {adicional.preco.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                            + {(adicional.preco || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                           </span>
                         </div>
                       </div>
@@ -1313,7 +1418,7 @@ export default function MenuClientesModule() {
                   className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 text-lg font-medium"
                 >
                   Adicionar •{" "}
-                  {getModalItemPrice().toLocaleString("pt-BR", {
+                  {(getModalItemPrice() || 0).toLocaleString("pt-BR", {
                     style: "currency",
                     currency: "BRL",
                   })}
@@ -1334,7 +1439,7 @@ export default function MenuClientesModule() {
               >
                 <ShoppingCart className="h-5 w-5 mr-2" />
                 Ver carrinho • {cartItemCount} {cartItemCount === 1 ? "item" : "itens"} •{" "}
-                {cartTotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                {(cartTotal || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
               </Button>
             </DialogTrigger>
 
@@ -1344,6 +1449,9 @@ export default function MenuClientesModule() {
                   <ShoppingCart className="h-5 w-5" />
                   Finalizar Pedido
                 </DialogTitle>
+                <DialogDescription className="text-popover-foreground/70">
+                  Revise seus itens e preencha os dados para finalizar seu pedido
+                </DialogDescription>
               </DialogHeader>
 
               <div className="space-y-6">
@@ -1455,11 +1563,14 @@ export default function MenuClientesModule() {
 
                               <div className="text-right ml-4">
                                 <div className="font-bold text-lg text-gray-900">
-                                  {totalItemPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                                  {(totalItemPrice || 0).toLocaleString("pt-BR", {
+                                    style: "currency",
+                                    currency: "BRL",
+                                  })}
                                 </div>
                                 {cartItem.quantity > 1 && (
                                   <div className="text-sm text-gray-500">
-                                    {(totalItemPrice / cartItem.quantity).toLocaleString("pt-BR", {
+                                    {((totalItemPrice || 0) / cartItem.quantity).toLocaleString("pt-BR", {
                                       style: "currency",
                                       currency: "BRL",
                                     })}{" "}
@@ -1482,14 +1593,16 @@ export default function MenuClientesModule() {
                       </Button>
                     </div>
                     <div className="text-2xl font-bold">
-                      R$ {(getCartTotal() + calcularFrete(getCartTotal())).toFixed(2)}
+                      R$ {((getCartTotal() || 0) + (calcularFrete(getCartTotal() || 0) || 0)).toFixed(2)}
                     </div>
                     <div className="text-xs mt-1 opacity-90">
-                      Produtos: R$ {getCartTotal().toFixed(2)}
-                      {calcularFrete(getCartTotal()) > 0 && (
-                        <> + Frete: R$ {calcularFrete(getCartTotal()).toFixed(2)}</>
+                      Produtos: R$ {(getCartTotal() || 0).toFixed(2)}
+                      {(calcularFrete(getCartTotal() || 0) || 0) > 0 && (
+                        <> + Frete: R$ {(calcularFrete(getCartTotal() || 0) || 0).toFixed(2)}</>
                       )}
-                      {calcularFrete(getCartTotal()) === 0 && !configuracaoFrete.freteGratis && <> • Frete Grátis!</>}
+                      {(calcularFrete(getCartTotal() || 0) || 0) === 0 && !configuracaoFrete.freteGratis && (
+                        <> • Frete Grátis!</>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1639,8 +1752,9 @@ export default function MenuClientesModule() {
           <div className="flex flex-col md:flex-row items-center justify-between text-primary-foreground">
             <div className="flex items-center gap-4 mb-4 md:mb-0">
               <p className="text-lg">
-                <span className="font-bold">Todos os lanches acompanham</span> Batata frita{" "}
-                <span className="text-sm">(150g)</span> e refrigerante lata.
+                <span className="font-bold">
+                  {dadosEmpresa.horario_funcionamento || "Segunda a Sábado: 18h às 23h"}
+                </span>
               </p>
             </div>
 
@@ -1651,7 +1765,7 @@ export default function MenuClientesModule() {
               </div>
               <div className="flex items-center gap-2 bg-white/20 rounded-lg px-4 py-2">
                 <Phone className="h-5 w-5" />
-                <span className="text-xl font-bold">99642-0379</span>
+                <span className="text-xl font-bold">{dadosEmpresa.telefone}</span>
               </div>
             </div>
           </div>

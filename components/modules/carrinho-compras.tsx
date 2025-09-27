@@ -17,7 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { useDatabasePricing } from "@/components/database-pricing-context"
+import { usePricing } from "@/components/pricing-context"
 import { ShoppingCart, Plus, Minus, Trash2, CreditCard, MapPin, Clock, User, CheckCircle, Truck } from "lucide-react"
 
 interface CartItem {
@@ -52,7 +52,7 @@ interface Pedido {
 }
 
 export default function CarrinhoComprasModule() {
-  const { produtos, bebidas, combos } = useDatabasePricing()
+  const { produtos, bebidas, combos } = usePricing()
   const [carrinho, setCarrinho] = useState<CartItem[]>([])
   const [showCheckout, setShowCheckout] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
