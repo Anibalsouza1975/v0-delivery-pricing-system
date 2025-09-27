@@ -13,23 +13,70 @@ export async function GET(request: NextRequest) {
 
   console.log("[v0] ===== VERIFICAÇÃO WEBHOOK GET =====")
   console.log("[v0] Timestamp:", new Date().toISOString())
+  console.log("[v0] URL completa:", request.url)
   console.log("[v0] Mode:", mode)
   console.log("[v0] Token recebido:", token)
   console.log("[v0] Token esperado:", VERIFY_TOKEN)
   console.log("[v0] Challenge:", challenge)
-  console.log("[v0] URL completa:", request.url)
-  console.log("[v0] Headers:", Object.fromEntries(request.headers.entries()))
   console.log("[v0] User-Agent:", request.headers.get("user-agent"))
   console.log("[v0] X-Forwarded-For:", request.headers.get("x-forwarded-for"))
-  console.log("[v0] ===== FIM VERIFICAÇÃO =====")
 
-  if (mode === "subscribe" && token === VERIFY_TOKEN) {
-    console.log("[v0] ✅ Webhook verificado com sucesso - Challenge:", challenge)
-    return new NextResponse(challenge)
+  if (!mode || !token || !challenge) {
+    console.log("[v0] ❌ Parâmetros obrigatórios ausentes")
+    console.log("[v0] - Mode presente:", !!mode)
+    console.log("[v0] - Token presente:", !!token)
+    console.log("[v0] - Challenge presente:", !!challenge)
+
+    // Retorna resposta mais específica para o Meta
+    return new Response("Bad Request - Missing required parameters", {
+      status: 400,
+      headers: {
+        "Content-Type": "text/plain",
+        "Cache-Control": "no-cache",
+      },
+    })
   }
 
-  console.log("[v0] ❌ Webhook rejeitado - tokens não coincidem")
-  return new NextResponse("Forbidden", { status: 403 })
+  if (!VERIFY_TOKEN) {
+    console.log("[v0] ❌ WHATSAPP_VERIFY_TOKEN não configurado no servidor")
+    return new Response("Server Configuration Error", {
+      status: 500,
+      headers: {
+        "Content-Type": "text/plain",
+        "Cache-Control": "no-cache",
+      },
+    })
+  }
+
+  if (mode === "subscribe" && token === VERIFY_TOKEN) {
+    console.log("[v0] ✅ Webhook verificado com sucesso!")
+    console.log("[v0] Retornando challenge:", challenge)
+    console.log("[v0] ===== FIM VERIFICAÇÃO SUCESSO =====")
+
+    // Resposta otimizada para Meta
+    return new Response(challenge, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/plain",
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        Pragma: "no-cache",
+        Expires: "0",
+      },
+    })
+  }
+
+  console.log("[v0] ❌ Webhook rejeitado")
+  console.log("[v0] - Mode correto:", mode === "subscribe")
+  console.log("[v0] - Token correto:", token === VERIFY_TOKEN)
+  console.log("[v0] ===== FIM VERIFICAÇÃO FALHA =====")
+
+  return new Response("Forbidden - Invalid verification", {
+    status: 403,
+    headers: {
+      "Content-Type": "text/plain",
+      "Cache-Control": "no-cache",
+    },
+  })
 }
 
 const mensagensProcessadas = new Set<string>()
