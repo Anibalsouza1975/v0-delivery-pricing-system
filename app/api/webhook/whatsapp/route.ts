@@ -377,11 +377,12 @@ async function salvarConversaNoBanco(telefone: string, mensagem: string, message
       console.log("[v0] Conversa atualizada:", conversaId)
     }
 
+    // Alterando tipo de "recebida" para "cliente" para compatibilidade com interface
     // Salvar mensagem
     const { error: erroMensagem } = await supabase.from("whatsapp_mensagens").insert({
       conversa_id: conversaId,
       message_id: messageId,
-      tipo: "recebida",
+      tipo: "cliente", // Mudança: era "recebida", agora "cliente"
       conteudo: mensagem,
       status: "entregue",
     })
@@ -408,11 +409,12 @@ async function salvarRespostaNoBanco(telefone: string, resposta: string) {
       .single()
 
     if (conversa) {
+      // Alterando tipo de "enviada" para "bot" para compatibilidade com interface
       // Salvar resposta da IA
       const { error } = await supabase.from("whatsapp_mensagens").insert({
         conversa_id: conversa.id,
         message_id: `ai_${Date.now()}`,
-        tipo: "enviada",
+        tipo: "bot", // Mudança: era "enviada", agora "bot"
         conteudo: resposta,
         status: "enviada",
       })

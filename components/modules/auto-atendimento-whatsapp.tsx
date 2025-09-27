@@ -121,11 +121,29 @@ export default function AutoAtendimentoWhatsAppModule() {
 
   useEffect(() => {
     carregarDados()
+
+    // Configurar atualização automática das conversas
+    const interval = setInterval(() => {
+      console.log("[v0] Atualizando conversas automaticamente...")
+      fetch("/api/whatsapp/conversas")
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.conversas) {
+            console.log("[v0] Conversas atualizadas:", data.conversas.length)
+            setConversas(data.conversas)
+          }
+        })
+        .catch((error) => console.error("[v0] Erro na atualização automática:", error))
+    }, 10000) // Atualizar a cada 10 segundos
+
+    return () => clearInterval(interval)
   }, [])
 
   const carregarDados = async () => {
     try {
       setCarregandoDados(true)
+
+      console.log("[v0] Carregando dados do WhatsApp...")
 
       // Carregar configuração
       const configResponse = await fetch("/api/whatsapp/config")
@@ -148,10 +166,15 @@ export default function AutoAtendimentoWhatsAppModule() {
       }
 
       // Carregar conversas
+      console.log("[v0] Buscando conversas...")
       const conversasResponse = await fetch("/api/whatsapp/conversas")
       if (conversasResponse.ok) {
         const { conversas } = await conversasResponse.json()
+        console.log("[v0] Conversas recebidas:", conversas?.length || 0)
+        console.log("[v0] Dados das conversas:", conversas)
         setConversas(conversas || [])
+      } else {
+        console.error("[v0] Erro ao carregar conversas:", conversasResponse.status)
       }
 
       // Carregar métricas
