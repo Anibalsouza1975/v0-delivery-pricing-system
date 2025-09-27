@@ -1,20 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createServerClient } from "@supabase/ssr"
+import { createClient } from "@/lib/supabase/server"
 
 export async function POST(request: NextRequest) {
   try {
     const pedido = await request.json()
     console.log("[v0] API: Recebendo pedido:", pedido.id)
 
-    const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
-      cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value
-        },
-        set() {},
-        remove() {},
-      },
-    })
+    const supabase = await createClient()
 
     const { data, error } = await supabase
       .from("pedidos")
@@ -63,15 +55,7 @@ export async function GET(request: NextRequest) {
     const dataFim = searchParams.get("dataFim")
     const limit = searchParams.get("limit")
 
-    const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
-      cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value
-        },
-        set() {},
-        remove() {},
-      },
-    })
+    const supabase = await createClient()
 
     let query = supabase.from("pedidos").select("*").order("created_at", { ascending: false })
 

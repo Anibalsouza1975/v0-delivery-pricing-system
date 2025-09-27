@@ -1,21 +1,9 @@
 import { NextResponse } from "next/server"
-import { createServerClient } from "@supabase/ssr"
+import { createClient } from "@/lib/supabase/server"
 
 export async function GET() {
   try {
-    const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
-      cookies: {
-        get(name: string) {
-          return undefined
-        },
-        set(name: string, value: string, options: any) {
-          // No-op for server-side
-        },
-        remove(name: string, options: any) {
-          // No-op for server-side
-        },
-      },
-    })
+    const supabase = await createClient()
 
     // Buscar apenas dados públicos da empresa (sem informações sensíveis)
     const { data, error } = await supabase

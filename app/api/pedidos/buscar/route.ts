@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createServerClient } from "@supabase/ssr"
+import { createClient } from "@/lib/supabase/server"
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -10,33 +10,59 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
-      cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value
-        },
-        set() {},
-        remove() {},
-      },
-    })
+    const supabase = await createClient()
 
     console.log("[v0] Buscando pedido no BD:", numeroPedido)
 
-    // Buscar pedido na tabela pedidos
-    const { data: pedido, error } = await supabase
+    const { data: pedidoNovo, error: errorPedido } = await supabase
       .from("pedidos")
       .select("*")
       .eq("numero_pedido", numeroPedido)
       .single()
 
-    if (error) {
-      console.log("[v0] Erro ao buscar pedido:", error)
-      return NextResponse.json({ error: "Pedido não encontrado" }, { status: 404 })
+    let pedido = null
+
+    if (!errorPedido && pedidoNovo) {
+      console.log("[v0] Pedido encontrado na tabela pedidos:", pedidoNovo.numero_pedido)
+      pedido = pedidoNovo
+    } else {
+      console.log("[v0] Pedido não encontrado na tabela pedidos, buscando na tabela vendas...")
+
+      const { data: pedidoAntigo, error: errorVenda } = await supabase
+        .from("vendas")
+        .select("*")
+        .eq("numero_pedido", numeroPedido)
+        .single()
+
+      if (errorVenda || !pedidoAntigo) {
+        console.log("[v0] Pedido não encontrado em nenhuma tabela:", numeroPedido)
+        return NextResponse.json({ error: "Pedido não encontrado" }, { status: 404 })
+      }
+
+      console.log("[v0] Pedido encontrado na tabela vendas:", pedidoAntigo.numero_pedido)
+
+      pedido = {
+        id: pedidoAntigo.id,
+        numero_pedido: pedidoAntigo.numero_pedido,
+        cliente_nome: pedidoAntigo.cliente_nome,
+        cliente_telefone: pedidoAntigo.cliente_telefone,
+        cliente_endereco: pedidoAntigo.cliente_endereco,
+        cliente_complemento: "",
+        cliente_observacoes: pedidoAntigo.observacoes || "",
+        itens: [], // Vendas antigas não têm itens detalhados
+        subtotal: pedidoAntigo.total - (pedidoAntigo.taxa_entrega || 0),
+        taxa_entrega: pedidoAntigo.taxa_entrega || 0,
+        total: pedidoAntigo.total,
+        forma_pagamento: pedidoAntigo.forma_pagamento,
+        observacoes_pedido: pedidoAntigo.observacoes || "",
+        status: pedidoAntigo.status,
+        origem: "venda_antiga",
+        created_at: pedidoAntigo.created_at,
+        updated_at: pedidoAntigo.updated_at,
+      }
     }
 
-    console.log("[v0] Pedido encontrado:", pedido.numero_pedido)
-
-    if (pedido.itens && Array.isArray(pedido.itens)) {
+    if (pedido.itens && Array.isArray(pedido.itens) && pedido.itens.length > 0) {
       const itensComImagens = await Promise.all(
         pedido.itens.map(async (item: any) => {
           let imagemUrl = null
@@ -75,6 +101,19 @@ export async function GET(request: NextRequest) {
 
       pedido.itens = itensComImagens
       console.log("[v0] Imagens dos produtos adicionadas aos itens")
+    } else if (pedido.origem === "venda_antiga") {
+      const { data: itensVenda } = await supabase.from("itens_venda").select("*").eq("venda_id", pedido.id)
+
+      if (itensVenda && itensVenda.length > 0) {
+        pedido.itens = itensVenda.map((item: any) => ({
+          id: item.produto_id || item.bebida_id || item.combo_id,
+          nome: "Item do pedido",
+          quantidade: item.quantidade,
+          preco: item.preco_unitario,
+          imagem_url: null,
+        }))
+        console.log("[v0] Itens da venda antiga carregados:", itensVenda.length)
+      }
     }
 
     return NextResponse.json({ pedido })

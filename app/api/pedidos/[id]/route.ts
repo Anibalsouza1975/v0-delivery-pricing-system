@@ -1,20 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createServerClient } from "@supabase/ssr"
+import { createClient } from "@/lib/supabase/server"
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const { status } = await request.json()
     const pedidoId = params.id
 
-    const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
-      cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value
-        },
-        set() {},
-        remove() {},
-      },
-    })
+    const supabase = await createClient()
 
     const { data: pedidoAtual, error: errorBusca } = await supabase
       .from("pedidos")
@@ -143,15 +135,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
   try {
     const pedidoId = params.id
 
-    const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
-      cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value
-        },
-        set() {},
-        remove() {},
-      },
-    })
+    const supabase = await createClient()
 
     const { error } = await supabase.from("pedidos").delete().eq("id", pedidoId)
 

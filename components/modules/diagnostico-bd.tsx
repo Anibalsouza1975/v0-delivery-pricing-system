@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Database, CheckCircle, XCircle, AlertCircle, RefreshCw, Table } from "lucide-react"
-import { createBrowserClient } from "@supabase/ssr"
+import { createClient } from "@/lib/supabase/client"
 
 interface TableInfo {
   name: string
@@ -25,10 +25,7 @@ export default function DiagnosticoBDModule() {
 
   // Inicializar cliente Supabase
   useEffect(() => {
-    const client = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    )
+    const client = createClient()
     setSupabase(client)
   }, [])
 

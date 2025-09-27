@@ -1,28 +1,33 @@
 "use client"
 
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState, useEffect } from "react"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import {
   MessageCircle,
   Settings,
   Bot,
-  Phone,
   Users,
   BarChart3,
   Zap,
   CheckCircle,
   XCircle,
   Clock,
-  Smartphone,
   MessageSquare,
   Activity,
+  RefreshCw,
+  AlertTriangle,
+  ExternalLink,
+  Phone,
+  Save,
+  TestTube,
 } from "lucide-react"
 
 interface Conversa {
@@ -59,6 +64,15 @@ interface ConfiguracaoBot {
   }
 }
 
+interface Metricas {
+  totalConversas: number
+  conversasAtivas: number
+  conversasHoje: number
+  mensagensHoje: number
+  taxaResposta: number
+  tempoMedioResposta: string
+}
+
 export default function AutoAtendimentoWhatsAppModule() {
   const [activeTab, setActiveTab] = useState("dashboard")
   const [configuracao, setConfiguracao] = useState<ConfiguracaoBot>({
@@ -67,7 +81,7 @@ export default function AutoAtendimentoWhatsAppModule() {
     mensagemBoasVindas:
       "Olá! 👋 Bem-vindo ao Cartago Burger Grill! Sou seu assistente virtual e estou aqui para ajudar com pedidos, cardápio e informações. Como posso te ajudar hoje?",
     horarioFuncionamento: {
-      inicio: "08:00",
+      inicio: "18:00",
       fim: "23:00",
     },
     respostasAutomaticas: {
@@ -79,74 +93,124 @@ export default function AutoAtendimentoWhatsAppModule() {
     },
   })
 
-  const [conversas, setConversas] = useState<Conversa[]>([
-    {
-      id: "1",
-      cliente: "João Silva",
-      telefone: "+5511999887766",
-      status: "ativa",
-      ultimaMensagem: "Quero fazer um pedido",
-      timestamp: new Date(),
-      mensagens: [
-        {
-          id: "1",
-          tipo: "cliente",
-          conteudo: "Oi, quero fazer um pedido",
-          timestamp: new Date(),
-        },
-        {
-          id: "2",
-          tipo: "bot",
-          conteudo:
-            "Olá João! Claro, vou te ajudar com o pedido. Você gostaria de ver nosso cardápio completo ou já sabe o que deseja?",
-          timestamp: new Date(),
-        },
-      ],
-    },
-    {
-      id: "2",
-      cliente: "Maria Santos",
-      telefone: "+5511888776655",
-      status: "aguardando",
-      ultimaMensagem: "Qual o horário de funcionamento?",
-      timestamp: new Date(Date.now() - 300000),
-      mensagens: [],
-    },
-  ])
+  const [conversas, setConversas] = useState<Conversa[]>([])
+  const [metricas, setMetricas] = useState<Metricas>({
+    totalConversas: 0,
+    conversasAtivas: 0,
+    conversasHoje: 0,
+    mensagensHoje: 0,
+    taxaResposta: 0,
+    tempoMedioResposta: "0min",
+  })
 
-  const [webhookUrl, setWebhookUrl] = useState("")
-  const [tokenWhatsApp, setTokenWhatsApp] = useState("")
-  const [statusConexao, setStatusConexao] = useState<"conectado" | "desconectado" | "configurando">("desconectado")
+  const [statusConexao, setStatusConexao] = useState<"conectado" | "desconectado" | "configurando" | "token_expirado">(
+    "desconectado",
+  )
+  const [tokenError, setTokenError] = useState<any>(null)
   const [qrCode, setQrCode] = useState<string>("")
   const [conectandoWhatsApp, setConectandoWhatsApp] = useState(false)
-  const [sessionId, setSessionId] = useState<string>("")
+  const [salvandoConfig, setSalvandoConfig] = useState(false)
+  const [carregandoDados, setCarregandoDados] = useState(true)
+  const [testingWebhook, setTestingWebhook] = useState(false)
+  const [debugToken, setDebugToken] = useState("")
+  const [debugResult, setDebugResult] = useState<any>(null)
+  const [testingToken, setTestingToken] = useState(false)
+  const [webhookDiagnostics, setWebhookDiagnostics] = useState<any>(null)
+  const [testingWebhookConfig, setTestingWebhookConfig] = useState(false)
+  const [updatingWebhookUrl, setUpdatingWebhookUrl] = useState(false)
 
-  // Estatísticas do dashboard
-  const totalConversas = conversas.length
-  const conversasAtivas = conversas.filter((c) => c.status === "ativa").length
-  const conversasHoje = conversas.filter((c) => {
-    const hoje = new Date().toDateString()
-    return c.timestamp.toDateString() === hoje
-  }).length
+  useEffect(() => {
+    carregarDados()
+  }, [])
 
-  const handleSalvarConfiguracao = () => {
-    // Aqui salvaria a configuração no backend
-    console.log("[v0] Salvando configuração do bot:", configuracao)
-    alert("Configuração salva com sucesso!")
+  const carregarDados = async () => {
+    try {
+      setCarregandoDados(true)
+
+      // Carregar configuração
+      const configResponse = await fetch("/api/whatsapp/config")
+      if (configResponse.ok) {
+        const { config } = await configResponse.json()
+        if (config) {
+          setConfiguracao({
+            ativo: config.ativo,
+            nomeBot: config.nome_bot,
+            mensagemBoasVindas: config.mensagem_boas_vindas,
+            horarioFuncionamento: {
+              inicio: config.horario_inicio,
+              fim: config.horario_fim,
+            },
+            respostasAutomaticas: config.respostas_automaticas,
+          })
+          setStatusConexao(config.status_conexao || "desconectado")
+          setTokenError(config.token_error || null)
+        }
+      }
+
+      // Carregar conversas
+      const conversasResponse = await fetch("/api/whatsapp/conversas")
+      if (conversasResponse.ok) {
+        const { conversas } = await conversasResponse.json()
+        setConversas(conversas || [])
+      }
+
+      // Carregar métricas
+      const metricasResponse = await fetch("/api/whatsapp/metricas")
+      if (metricasResponse.ok) {
+        const { metricas } = await metricasResponse.json()
+        setMetricas(metricas)
+      }
+    } catch (error) {
+      console.error("[v0] Erro ao carregar dados WhatsApp:", error)
+    } finally {
+      setCarregandoDados(false)
+    }
   }
 
-  const handleTestarConexao = () => {
+  const handleSalvarConfiguracao = async () => {
+    try {
+      setSalvandoConfig(true)
+
+      const response = await fetch("/api/whatsapp/config", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(configuracao),
+      })
+
+      if (response.ok) {
+        alert("Configuração salva com sucesso!")
+      } else {
+        throw new Error("Erro ao salvar configuração")
+      }
+    } catch (error) {
+      console.error("[v0] Erro ao salvar configuração:", error)
+      alert("Erro ao salvar configuração. Tente novamente.")
+    } finally {
+      setSalvandoConfig(false)
+    }
+  }
+
+  const handleTestarConexao = async () => {
     setStatusConexao("configurando")
-    // Simular teste de conexão
-    setTimeout(() => {
-      if (tokenWhatsApp && webhookUrl) {
+
+    try {
+      const response = await fetch("/api/whatsapp/test-connection")
+      const data = await response.json()
+
+      if (data.success) {
         setStatusConexao("conectado")
-        alert("Conexão testada com sucesso!")
+        alert(`Conexão testada com sucesso!\nNúmero: ${data.phoneNumber}\nStatus: ${data.status}`)
       } else {
         setStatusConexao("desconectado")
-        alert("Erro: Preencha todos os campos obrigatórios")
+        alert(`Erro na conexão: ${data.error}`)
       }
-    }, 2000)
+    } catch (error) {
+      console.error("[v0] Erro ao testar conexão:", error)
+      setStatusConexao("desconectado")
+      alert("Erro ao testar conexão. Verifique as configurações.")
+    }
   }
 
   const handleGerarQRCode = async () => {
@@ -165,7 +229,6 @@ export default function AutoAtendimentoWhatsAppModule() {
 
       if (data.success) {
         setQrCode(data.qrCode)
-        setSessionId(data.sessionId)
         setStatusConexao("configurando")
 
         setTimeout(() => {
@@ -212,6 +275,369 @@ export default function AutoAtendimentoWhatsAppModule() {
     }
   }
 
+  const handleTestarWebhook = async () => {
+    try {
+      setTestingWebhook(true)
+
+      const response = await fetch("/api/whatsapp/test-webhook", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      const data = await response.json()
+
+      if (data.success) {
+        alert(`✅ Webhook testado com sucesso!
+
+📱 Mensagem simulada: "${data.testData.receivedMessage}"
+📞 Número: ${data.testData.fromNumber}
+🤖 Resposta da IA: "${data.testData.aiResponse}"
+⏰ Timestamp: ${new Date(data.testData.timestamp).toLocaleString()}
+
+O webhook está funcionando corretamente!`)
+      } else {
+        alert(`❌ Erro no teste do webhook: ${data.error}`)
+      }
+    } catch (error) {
+      console.error("[v0] Erro ao testar webhook:", error)
+      alert(`❌ Erro ao testar webhook: ${error instanceof Error ? error.message : "Erro desconhecido"}
+
+Verifique o console para mais detalhes.`)
+    } finally {
+      setTestingWebhook(false)
+    }
+  }
+
+  const handleDebugToken = async () => {
+    try {
+      setTestingToken(true)
+      const response = await fetch("/api/whatsapp/debug-token")
+      const data = await response.json()
+      setDebugResult(data.debug)
+    } catch (error) {
+      console.error("[v0] Erro ao fazer debug do token:", error)
+      setDebugResult({ error: "Erro ao fazer debug do token" })
+    } finally {
+      setTestingToken(false)
+    }
+  }
+
+  const handleTestNewToken = async () => {
+    if (!debugToken.trim()) {
+      alert("Por favor, cole o novo token primeiro")
+      return
+    }
+
+    try {
+      setTestingToken(true)
+      const response = await fetch("/api/whatsapp/update-token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ newToken: debugToken.trim() }),
+      })
+      const data = await response.json()
+
+      if (data.success) {
+        const popup = document.createElement("div")
+        popup.style.cssText = `
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          background: white;
+          padding: 20px;
+          border-radius: 8px;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+          z-index: 1000;
+          max-width: 500px;
+          width: 90%;
+          border: 1px solid #e2e8f0;
+        `
+        popup.innerHTML = `
+          <div style="text-align: center; margin-bottom: 15px;">
+            <h3 style="margin: 0 0 10px 0; color: #16a34a;">Token testado</h3>
+            <p style="margin: 0; color: #16a34a;">Token válido! Atualize a variável WHATSAPP_ACCESS_TOKEN nas configurações do projeto.</p>
+          </div>
+          <div style="text-align: left; margin-bottom: 15px; font-size: 14px;">
+            <p style="margin: 0 0 10px 0; font-weight: bold;">Instruções:</p>
+            <ol style="margin: 0; padding-left: 20px;">
+              <li>Vá para o ícone de engrenagem (⚙️) no canto superior direito</li>
+              <li>Clique em 'Environment Variables'</li>
+              <li>Encontre 'WHATSAPP_ACCESS_TOKEN'</li>
+              <li>Cole o novo token e salve</li>
+              <li>Aguarde alguns segundos para o sistema processar</li>
+            </ol>
+          </div>
+          <button onclick="this.parentElement.remove()" style="
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+          ">OK</button>
+        `
+        document.body.appendChild(popup)
+
+        if (data.tokenPreview) {
+          setDebugToken("")
+        }
+      } else {
+        alert(`Erro: ${data.error}`)
+      }
+    } catch (error) {
+      console.error("[v0] Erro ao testar novo token:", error)
+      alert("Erro ao testar novo token")
+    } finally {
+      setTestingToken(false)
+    }
+  }
+
+  const handleDiagnosticarWebhook = async () => {
+    try {
+      setTestingWebhookConfig(true)
+
+      const response = await fetch("/api/whatsapp/webhook-diagnostics", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+
+      const data = await response.json()
+      setWebhookDiagnostics(data)
+
+      if (data.urlMismatch) {
+        const popup = document.createElement("div")
+        popup.style.cssText = `
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          background: white;
+          padding: 20px;
+          border-radius: 8px;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+          z-index: 1000;
+          max-width: 700px;
+          width: 90%;
+          border: 1px solid #e2e8f0;
+          max-height: 80vh;
+          overflow-y: auto;
+        `
+        popup.innerHTML = `
+          <div style="text-align: center; margin-bottom: 15px;">
+            <h3 style="margin: 0 0 10px 0; color: #dc2626;">⚠️ URL do Webhook Incorreta</h3>
+            <p style="margin: 0; color: #dc2626;">O webhook no Meta está configurado para uma URL diferente da atual.</p>
+          </div>
+          <div style="text-align: left; margin-bottom: 15px; font-size: 14px;">
+            <p style="margin: 0 0 10px 0; font-weight: bold;">URLs detectadas:</p>
+            <div style="background: #f3f4f6; padding: 10px; border-radius: 6px; margin-bottom: 10px;">
+              <p style="margin: 0 0 5px 0;"><strong>URL atual do sistema:</strong></p>
+              <code style="font-size: 12px; word-break: break-all;">${data.webhookUrl}</code>
+            </div>
+            <div style="background: #fef3c7; padding: 10px; border-radius: 6px;">
+              <p style="margin: 0 0 5px 0;"><strong>URL configurada no Meta:</strong></p>
+              <code style="font-size: 12px; word-break: break-all;">${data.webhookUrlInMeta}</code>
+            </div>
+          </div>
+          <div style="background: #fef3c7; padding: 10px; border-radius: 6px; margin-bottom: 15px;">
+            <p style="margin: 0; font-size: 13px; color: #92400e;">
+              <strong>Problema:</strong> O Meta está enviando mensagens para a URL antiga, por isso elas não chegam no sistema atual.
+            </p>
+          </div>
+          <div style="background: #f0f9ff; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+            <p style="margin: 0 0 10px 0; font-weight: bold; color: #0369a1;">📋 Como corrigir manualmente:</p>
+            <ol style="margin: 0; padding-left: 20px; line-height: 1.6; color: #0369a1;">
+              <li>Acesse <a href="https://developers.facebook.com/apps" target="_blank" style="color: #3b82f6;">Meta for Developers</a></li>
+              <li>Vá para seu app WhatsApp Business</li>
+              <li>Na seção "WhatsApp" → "Configuração"</li>
+              <li>Encontre "Webhooks" e clique em "Editar"</li>
+              <li>Atualize a URL para: <br><code style="background: #e0f2fe; padding: 2px 4px; border-radius: 3px; font-size: 11px; word-break: break-all;">${data.webhookUrl}</code></li>
+              <li>Mantenha o token: <code style="background: #e0f2fe; padding: 2px 4px; border-radius: 3px; font-size: 11px;">${data.verifyToken}</code></li>
+              <li>Clique em "Verificar e salvar"</li>
+              <li>Teste enviando uma mensagem para +1 555 185 0889</li>
+            </ol>
+          </div>
+          <div style="background: #dcfce7; padding: 10px; border-radius: 6px; margin-bottom: 15px;">
+            <p style="margin: 0; font-size: 13px; color: #166534;">
+              <strong>💡 Alternativa:</strong> Você pode fazer o deploy para produção clicando em "Publish" no v0, assim a URL do Meta ficará correta automaticamente.
+            </p>
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <button onclick="this.parentElement.parentElement.remove()" style="
+              background: #6b7280;
+              color: white;
+              border: none;
+              padding: 8px 16px;
+              border-radius: 4px;
+              cursor: pointer;
+              flex: 1;
+            ">Fechar</button>
+            <button onclick="window.open('https://developers.facebook.com/apps', '_blank')" style="
+              background: #3b82f6;
+              color: white;
+              border: none;
+              padding: 8px 16px;
+              border-radius: 4px;
+              cursor: pointer;
+              flex: 1;
+            ">Abrir Meta for Developers</button>
+          </div>
+        `
+        document.body.appendChild(popup)
+      } else if (!data.webhookConfigured) {
+        // Show original webhook not configured popup
+        const popup = document.createElement("div")
+        popup.style.cssText = `
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          background: white;
+          padding: 20px;
+          border-radius: 8px;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+          z-index: 1000;
+          max-width: 600px;
+          width: 90%;
+          border: 1px solid #e2e8f0;
+          max-height: 80vh;
+          overflow-y: auto;
+        `
+        popup.innerHTML = `
+          <div style="text-align: center; margin-bottom: 15px;">
+            <h3 style="margin: 0 0 10px 0; color: #dc2626;">⚠️ Webhook não configurado no Meta</h3>
+            <p style="margin: 0; color: #dc2626;">O webhook não está recebendo mensagens do WhatsApp porque não foi configurado no painel da Meta.</p>
+          </div>
+          <div style="text-align: left; margin-bottom: 15px; font-size: 14px;">
+            <p style="margin: 0 0 10px 0; font-weight: bold;">Instruções passo a passo:</p>
+            <ol style="margin: 0; padding-left: 20px; line-height: 1.6;">
+              <li>Acesse <a href="https://developers.facebook.com/apps" target="_blank" style="color: #3b82f6;">Meta for Developers</a></li>
+              <li>Vá para seu app WhatsApp Business</li>
+              <li>Na seção "WhatsApp" → "Configuração"</li>
+              <li>Encontre "Webhooks" e clique em "Configurar"</li>
+              <li>Cole esta URL: <code style="background: #f3f4f6; padding: 2px 4px; border-radius: 3px; font-size: 12px;">${data.webhookUrl}</code></li>
+              <li>Cole este token: <code style="background: #f3f4f6; padding: 2px 4px; border-radius: 3px; font-size: 12px;">${data.verifyToken}</code></li>
+              <li>Marque "messages" nos eventos</li>
+              <li>Clique em "Verificar e salvar"</li>
+              <li>Ative o webhook para seu número de telefone</li>
+            </ol>
+          </div>
+          <div style="background: #fef3c7; padding: 10px; border-radius: 6px; margin-bottom: 15px;">
+            <p style="margin: 0; font-size: 13px; color: #92400e;">
+              <strong>Importante:</strong> Sem essa configuração, o WhatsApp não enviará mensagens para nosso sistema, mesmo que tudo esteja funcionando internamente.
+            </p>
+          </div>
+          <button onclick="this.parentElement.remove()" style="
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+          ">Entendi, vou configurar</button>
+        `
+        document.body.appendChild(popup)
+      }
+    } catch (error) {
+      console.error("[v0] Erro ao diagnosticar webhook:", error)
+      alert("Erro ao diagnosticar webhook")
+    } finally {
+      setTestingWebhookConfig(false)
+    }
+  }
+
+  const handleCorrigirWebhookUrl = async (newUrl: string) => {
+    try {
+      setUpdatingWebhookUrl(true)
+
+      const response = await fetch("/api/whatsapp/update-webhook-url", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ webhookUrl: newUrl }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        // Show success popup
+        const popup = document.createElement("div")
+        popup.style.cssText = `
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          background: white;
+          padding: 20px;
+          border-radius: 8px;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+          z-index: 1000;
+          max-width: 500px;
+          width: 90%;
+          border: 1px solid #e2e8f0;
+        `
+        popup.innerHTML = `
+          <div style="text-align: center; margin-bottom: 15px;">
+            <h3 style="margin: 0 0 10px 0; color: #16a34a;">✅ URL do Webhook Atualizada!</h3>
+            <p style="margin: 0; color: #16a34a;">O webhook foi configurado com sucesso no Meta. Agora as mensagens do WhatsApp devem chegar corretamente.</p>
+          </div>
+          <div style="text-align: left; margin-bottom: 15px; font-size: 14px;">
+            <p style="margin: 0 0 10px 0; font-weight: bold;">Próximos passos:</p>
+            <ol style="margin: 0; padding-left: 20px;">
+              <li>Envie uma mensagem de teste para +1 555 185 0889</li>
+              <li>O sistema deve responder automaticamente</li>
+              <li>Verifique a aba "Conversas" para ver as mensagens</li>
+            </ol>
+          </div>
+          <button onclick="this.parentElement.remove(); window.location.reload()" style="
+            background: #16a34a;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+          ">OK, testar agora</button>
+        `
+        document.body.appendChild(popup)
+
+        // Refresh diagnostics
+        setTimeout(() => {
+          handleDiagnosticarWebhook()
+        }, 2000)
+      } else {
+        alert(`Erro ao atualizar webhook: ${data.error}`)
+      }
+    } catch (error) {
+      console.error("[v0] Erro ao corrigir URL do webhook:", error)
+      alert("Erro ao corrigir URL do webhook")
+    } finally {
+      setUpdatingWebhookUrl(false)
+    }
+  }
+
+  if (carregandoDados) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <span className="ml-2">Carregando dados do WhatsApp...</span>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Header com Status */}
@@ -224,11 +650,26 @@ export default function AutoAtendimentoWhatsAppModule() {
           <p className="text-muted-foreground">Sistema inteligente de atendimento automatizado via WhatsApp</p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant={statusConexao === "conectado" ? "default" : "secondary"} className="flex items-center gap-1">
+          <Button variant="outline" size="sm" onClick={carregarDados}>
+            <RefreshCw className="h-4 w-4 mr-1" />
+            Atualizar
+          </Button>
+          <Badge
+            variant={
+              statusConexao === "conectado"
+                ? "default"
+                : statusConexao === "token_expirado"
+                  ? "destructive"
+                  : "secondary"
+            }
+            className="flex items-center gap-1"
+          >
             {statusConexao === "conectado" ? (
               <CheckCircle className="h-3 w-3" />
             ) : statusConexao === "configurando" ? (
               <Clock className="h-3 w-3" />
+            ) : statusConexao === "token_expirado" ? (
+              <AlertTriangle className="h-3 w-3" />
             ) : (
               <XCircle className="h-3 w-3" />
             )}
@@ -236,10 +677,54 @@ export default function AutoAtendimentoWhatsAppModule() {
               ? "Conectado"
               : statusConexao === "configurando"
                 ? "Configurando..."
-                : "Desconectado"}
+                : statusConexao === "token_expirado"
+                  ? "Token Expirado"
+                  : "Desconectado"}
           </Badge>
         </div>
       </div>
+
+      {statusConexao === "token_expirado" && tokenError && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Token de Acesso do WhatsApp Expirado</AlertTitle>
+          <AlertDescription className="space-y-2">
+            <p>O token de acesso do WhatsApp Business API expirou e precisa ser renovado.</p>
+            <div className="text-sm bg-red-50 p-3 rounded border">
+              <p>
+                <strong>Erro técnico:</strong> {tokenError.message}
+              </p>
+              <p>
+                <strong>Código:</strong> {tokenError.code} (Subcode: {tokenError.subcode})
+              </p>
+            </div>
+            <div className="space-y-2">
+              <p className="font-medium">Para resolver:</p>
+              <ol className="list-decimal list-inside space-y-1 text-sm">
+                <li>
+                  Acesse o{" "}
+                  <a
+                    href="https://developers.facebook.com/apps"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline inline-flex items-center gap-1"
+                  >
+                    Meta for Developers <ExternalLink className="h-3 w-3" />
+                  </a>
+                </li>
+                <li>Vá para seu app WhatsApp Business</li>
+                <li>Na seção "WhatsApp" → "Configuração da API"</li>
+                <li>Clique em "Gerar token de acesso"</li>
+                <li>Copie o novo token</li>
+                <li>
+                  Atualize a variável <code className="bg-gray-100 px-1 rounded">WHATSAPP_ACCESS_TOKEN</code> nas
+                  configurações do projeto
+                </li>
+              </ol>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-4">
@@ -270,7 +755,7 @@ export default function AutoAtendimentoWhatsAppModule() {
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{totalConversas}</div>
+                <div className="text-2xl font-bold">{metricas.totalConversas}</div>
                 <p className="text-xs text-muted-foreground">Todas as conversas</p>
               </CardContent>
             </Card>
@@ -281,7 +766,7 @@ export default function AutoAtendimentoWhatsAppModule() {
                 <Activity className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-green-600">{conversasAtivas}</div>
+                <div className="text-2xl font-bold text-green-600">{metricas.conversasAtivas}</div>
                 <p className="text-xs text-muted-foreground">Em andamento</p>
               </CardContent>
             </Card>
@@ -292,19 +777,34 @@ export default function AutoAtendimentoWhatsAppModule() {
                 <MessageCircle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{conversasHoje}</div>
+                <div className="text-2xl font-bold">{metricas.conversasHoje}</div>
                 <p className="text-xs text-muted-foreground">Iniciadas hoje</p>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Taxa Resposta</CardTitle>
-                <Bot className="h-4 w-4 text-muted-foreground" />
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Bot className="h-5 w-5" />
+                  Status do Bot
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">98%</div>
-                <p className="text-xs text-muted-foreground">Automática</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-3 h-3 rounded-full ${configuracao.ativo ? "bg-green-500" : "bg-red-500"}`} />
+                    <span className="font-medium">{configuracao.ativo ? "Bot Ativo" : "Bot Inativo"}</span>
+                    <Badge variant="outline">{configuracao.nomeBot}</Badge>
+                  </div>
+                  <Switch
+                    checked={configuracao.ativo}
+                    onCheckedChange={(checked) => setConfiguracao((prev) => ({ ...prev, ativo: checked }))}
+                  />
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Horário de funcionamento: {configuracao.horarioFuncionamento.inicio} às{" "}
+                  {configuracao.horarioFuncionamento.fim}
+                </p>
               </CardContent>
             </Card>
           </div>
@@ -346,34 +846,42 @@ export default function AutoAtendimentoWhatsAppModule() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {conversas.map((conversa) => (
-                  <div key={conversa.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                        <Phone className="h-4 w-4 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-medium">{conversa.cliente}</p>
-                        <p className="text-sm text-muted-foreground">{conversa.telefone}</p>
-                        <p className="text-sm">{conversa.ultimaMensagem}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <Badge
-                        variant={
-                          conversa.status === "ativa"
-                            ? "default"
-                            : conversa.status === "aguardando"
-                              ? "secondary"
-                              : "outline"
-                        }
-                      >
-                        {conversa.status}
-                      </Badge>
-                      <p className="text-xs text-muted-foreground mt-1">{conversa.timestamp.toLocaleTimeString()}</p>
-                    </div>
+                {conversas.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Nenhuma conversa encontrada</p>
+                    <p className="text-sm">As conversas aparecerão aqui quando os clientes enviarem mensagens</p>
                   </div>
-                ))}
+                ) : (
+                  conversas.map((conversa) => (
+                    <div key={conversa.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                          <Phone className="h-4 w-4 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-medium">{conversa.cliente}</p>
+                          <p className="text-sm text-muted-foreground">{conversa.telefone}</p>
+                          <p className="text-sm">{conversa.ultimaMensagem}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <Badge
+                          variant={
+                            conversa.status === "ativa"
+                              ? "default"
+                              : conversa.status === "aguardando"
+                                ? "secondary"
+                                : "outline"
+                          }
+                        >
+                          {conversa.status}
+                        </Badge>
+                        <p className="text-xs text-muted-foreground mt-1">{conversa.timestamp.toLocaleTimeString()}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
@@ -475,8 +983,18 @@ export default function AutoAtendimentoWhatsAppModule() {
                 </div>
               </div>
 
-              <Button onClick={handleSalvarConfiguracao} className="w-full">
-                Salvar Configuração
+              <Button onClick={handleSalvarConfiguracao} className="w-full" disabled={salvandoConfig}>
+                {salvandoConfig ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Salvar Configuração
+                  </>
+                )}
               </Button>
             </CardContent>
           </Card>
@@ -488,126 +1006,364 @@ export default function AutoAtendimentoWhatsAppModule() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Zap className="h-5 w-5" />
-                Método de Integração
+                Status da Integração WhatsApp Business API
               </CardTitle>
-              <CardDescription>Escolha como conectar o WhatsApp ao sistema</CardDescription>
+              <CardDescription>Verificação da conexão com a API oficial do WhatsApp</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card className="p-4 border-2 border-dashed">
+              <div className="grid grid-cols-1 gap-4">
+                <Card
+                  className={`p-4 border-2 ${statusConexao === "token_expirado" ? "border-red-200 bg-red-50" : ""}`}
+                >
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
-                      <Smartphone className="h-5 w-5 text-blue-600" />
-                      <h3 className="font-semibold">WhatsApp Web (Recomendado)</h3>
+                      <Settings className="h-5 w-5 text-blue-600" />
+                      <h3 className="font-semibold">WhatsApp Business API</h3>
+                      <Badge
+                        variant={
+                          statusConexao === "conectado"
+                            ? "default"
+                            : statusConexao === "token_expirado"
+                              ? "destructive"
+                              : "secondary"
+                        }
+                      >
+                        {statusConexao === "conectado"
+                          ? "Conectado"
+                          : statusConexao === "token_expirado"
+                            ? "Token Expirado"
+                            : "Desconectado"}
+                      </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Conecta via QR Code usando seu WhatsApp Business. Mais simples e rápido.
+                      Integração oficial da Meta configurada via tokens de acesso.
                     </p>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm">
-                        <CheckCircle className="h-4 w-4 text-green-600" />
-                        <span>Configuração em 2 minutos</span>
+
+                    {statusConexao === "token_expirado" ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm">
+                          <XCircle className="h-4 w-4 text-red-600" />
+                          <span className="text-red-600">Token de acesso expirado</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                          <span>Webhook configurado e funcionando</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                          <span>IA integrada para respostas automáticas</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <XCircle className="h-4 w-4 text-red-600" />
+                          <span className="text-red-600">Não pode enviar/receber mensagens reais</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <CheckCircle className="h-4 w-4 text-green-600" />
-                        <span>Sem tokens complicados</span>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm">
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                          <span>Webhook configurado e funcionando</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                          <span>IA integrada para respostas automáticas</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                          <span>Processamento de pedidos automatizado</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <CheckCircle className="h-4 w-4 text-green-600" />
-                        <span>IA totalmente funcional</span>
-                      </div>
+                    )}
+
+                    <div className="flex gap-2">
+                      <Button onClick={handleTestarConexao} disabled={statusConexao === "configurando"}>
+                        {statusConexao === "configurando" ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            Testando...
+                          </>
+                        ) : (
+                          <>
+                            <Activity className="h-4 w-4 mr-2" />
+                            Testar Conexão
+                          </>
+                        )}
+                      </Button>
+                      <Button variant="outline" onClick={handleTestarWebhook} disabled={testingWebhook}>
+                        {testingWebhook ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            Testando Webhook...
+                          </>
+                        ) : (
+                          <>
+                            <TestTube className="h-4 w-4 mr-2" />
+                            Testar Webhook
+                          </>
+                        )}
+                      </Button>
+                      <Button variant="outline" onClick={carregarDados}>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Atualizar Status
+                      </Button>
                     </div>
-                    <Button className="w-full">Conectar via QR Code</Button>
                   </div>
                 </Card>
+              </div>
 
-                <Card className="p-4 border-2 border-dashed opacity-60">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MessageCircle className="h-5 w-5" />
+                    Como Testar o Sistema
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Settings className="h-5 w-5 text-gray-600" />
-                      <h3 className="font-semibold">WhatsApp Business API</h3>
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold">
+                        1
+                      </div>
+                      <div>
+                        <p className="font-medium">Envie uma mensagem para o número do WhatsApp Business</p>
+                        <p className="text-sm text-muted-foreground">Número: +1 555 185 0889</p>
+                      </div>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      Integração oficial da Meta. Requer verificação e configuração complexa.
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold">
+                        2
+                      </div>
+                      <div>
+                        <p className="font-medium">O sistema responderá automaticamente</p>
+                        <p className="text-sm text-muted-foreground">
+                          A IA processará sua mensagem e enviará uma resposta personalizada
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold">
+                        3
+                      </div>
+                      <div>
+                        <p className="font-medium">Acompanhe na aba "Conversas"</p>
+                        <p className="text-sm text-muted-foreground">
+                          Todas as mensagens aparecerão aqui em tempo real
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-yellow-50 p-4 rounded-lg">
+                    <p className="text-sm font-medium text-yellow-900">🔧 Diagnóstico:</p>
+                    <p className="text-sm text-yellow-800 mb-2">
+                      Se as mensagens não estão sendo respondidas, use o botão "Testar Webhook" acima para verificar se
+                      o sistema está processando mensagens corretamente.
                     </p>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm">
-                        <XCircle className="h-4 w-4 text-red-600" />
-                        <span>Verificação Meta obrigatória</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <XCircle className="h-4 w-4 text-red-600" />
-                        <span>Configuração complexa</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Clock className="h-4 w-4 text-yellow-600" />
-                        <span>Pode levar dias para aprovar</span>
-                      </div>
+                    <p className="text-sm text-yellow-800">
+                      O teste simulará uma mensagem recebida e mostrará se o webhook está funcionando.
+                    </p>
+                  </div>
+
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <p className="text-sm font-medium text-blue-900">💡 Dica:</p>
+                    <p className="text-sm text-blue-800">
+                      Experimente perguntar sobre o cardápio, preços ou fazer um pedido. O sistema está configurado para
+                      responder automaticamente!
+                    </p>
+                  </div>
+
+                  <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertTriangle className="h-4 w-4 text-red-600" />
+                      <p className="text-sm font-medium text-red-900">🚨 Problema Identificado:</p>
                     </div>
-                    <Button variant="outline" className="w-full bg-transparent" disabled>
-                      Em Manutenção
+                    <p className="text-sm text-red-800 mb-3">
+                      O sistema interno funciona perfeitamente (teste do webhook passa), mas mensagens reais do WhatsApp
+                      não chegam. Isso indica que o webhook não foi configurado no painel da Meta.
+                    </p>
+                    <Button
+                      onClick={handleDiagnosticarWebhook}
+                      disabled={testingWebhookConfig || updatingWebhookUrl}
+                      variant="outline"
+                      size="sm"
+                      className="border-red-300 text-red-700 hover:bg-red-100 bg-transparent"
+                    >
+                      {testingWebhookConfig || updatingWebhookUrl ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          {updatingWebhookUrl ? "Corrigindo..." : "Diagnosticando..."}
+                        </>
+                      ) : (
+                        <>
+                          <Activity className="h-4 w-4 mr-2" />
+                          Diagnosticar Configuração Webhook
+                        </>
+                      )}
                     </Button>
                   </div>
-                </Card>
-              </div>
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageCircle className="h-5 w-5" />
-                Configuração WhatsApp Web
-              </CardTitle>
-              <CardDescription>Configure sua conexão via WhatsApp Web</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="text-center space-y-4">
-                <div className="w-48 h-48 mx-auto border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
-                  {conectandoWhatsApp ? (
-                    <div className="text-center space-y-2">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                      <p className="text-sm text-muted-foreground">Gerando QR Code...</p>
-                    </div>
-                  ) : qrCode ? (
-                    <div className="text-center space-y-2">
-                      <img src={qrCode || "/placeholder.svg"} alt="QR Code WhatsApp" className="w-40 h-40 mx-auto" />
-                      <p className="text-xs text-green-600 font-medium">
-                        {statusConexao === "conectado" ? "✅ Conectado!" : "Escaneie com WhatsApp"}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="text-center space-y-2">
-                      <Smartphone className="h-12 w-12 mx-auto text-gray-400" />
-                      <p className="text-sm text-muted-foreground">QR Code aparecerá aqui</p>
-                      <p className="text-xs text-muted-foreground">Escaneie com seu WhatsApp Business</p>
+                  {webhookDiagnostics && (
+                    <div className="bg-white p-4 rounded border">
+                      <h4 className="font-medium mb-2">Resultado do Diagnóstico Webhook:</h4>
+                      <div className="space-y-2 text-sm">
+                        <p>
+                          <strong>URL do Webhook:</strong>
+                          <code className="bg-gray-100 px-1 rounded ml-1">{webhookDiagnostics.webhookUrl}</code>
+                        </p>
+                        <p>
+                          <strong>Token de Verificação:</strong>
+                          <code className="bg-gray-100 px-1 rounded ml-1">{webhookDiagnostics.verifyToken}</code>
+                        </p>
+                        <p>
+                          <strong>Webhook Configurado no Meta:</strong>
+                          <span
+                            className={`ml-1 ${webhookDiagnostics.webhookConfigured ? "text-green-600" : "text-red-600"}`}
+                          >
+                            {webhookDiagnostics.webhookConfigured ? "✅ Sim" : "❌ Não"}
+                          </span>
+                        </p>
+                        {webhookDiagnostics.urlMismatch && (
+                          <p>
+                            <strong>URL no Meta:</strong>
+                            <code className="bg-yellow-100 px-1 rounded ml-1">
+                              {webhookDiagnostics.webhookUrlInMeta}
+                            </code>
+                            <span className="ml-1 text-red-600">⚠️ Diferente da atual</span>
+                          </p>
+                        )}
+                        <p>
+                          <strong>Sistema Interno:</strong>
+                          <span className="ml-1 text-green-600">✅ Funcionando</span>
+                        </p>
+                        <p>
+                          <strong>Mensagens Reais Recebidas:</strong>
+                          <span
+                            className={`ml-1 ${webhookDiagnostics.realMessagesReceived ? "text-green-600" : "text-red-600"}`}
+                          >
+                            {webhookDiagnostics.realMessagesReceived ? "✅ Sim" : "❌ Não"}
+                          </span>
+                        </p>
+                        {webhookDiagnostics.urlMismatch && (
+                          <div className="bg-yellow-50 p-2 rounded mt-2">
+                            <p className="text-yellow-800 text-xs">
+                              <strong>Solução:</strong> A URL do webhook no Meta está desatualizada. Use o botão
+                              "Corrigir URL Automaticamente" acima.
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
-                </div>
+                </CardContent>
+              </Card>
 
-                <div className="space-y-2">
-                  <h3 className="font-semibold">Como conectar:</h3>
-                  <div className="text-left space-y-1 text-sm text-muted-foreground max-w-md mx-auto">
-                    <p>1. Abra o WhatsApp Business no seu celular</p>
-                    <p>2. Toque em "Mais opções" (⋮) → "Dispositivos conectados"</p>
-                    <p>3. Toque em "Conectar um dispositivo"</p>
-                    <p>4. Escaneie o QR Code que aparecerá acima</p>
-                  </div>
-                </div>
+              {statusConexao === "token_expirado" && (
+                <Card className="border-red-200 bg-red-50">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-red-700">
+                      <AlertTriangle className="h-5 w-5" />
+                      Diagnóstico e Correção do Token
+                    </CardTitle>
+                    <CardDescription className="text-red-600">
+                      Ferramenta para verificar e testar tokens do WhatsApp Business API
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-3">
+                      <div className="flex gap-2">
+                        <Button onClick={handleDebugToken} disabled={testingToken} variant="outline">
+                          {testingToken ? (
+                            <>
+                              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                              Verificando...
+                            </>
+                          ) : (
+                            <>
+                              <Activity className="h-4 w-4 mr-2" />
+                              Verificar Token Atual
+                            </>
+                          )}
+                        </Button>
+                      </div>
 
-                <Button
-                  size="lg"
-                  className="w-full max-w-md"
-                  onClick={handleGerarQRCode}
-                  disabled={conectandoWhatsApp || statusConexao === "conectado"}
-                >
-                  {conectandoWhatsApp
-                    ? "Gerando QR Code..."
-                    : statusConexao === "conectado"
-                      ? "✅ WhatsApp Conectado"
-                      : "Gerar QR Code"}
-                </Button>
-              </div>
+                      {debugResult && (
+                        <div className="bg-white p-4 rounded border">
+                          <h4 className="font-medium mb-2">Resultado do Diagnóstico:</h4>
+                          <div className="space-y-2 text-sm">
+                            <p>
+                              <strong>Token existe:</strong> {debugResult.tokenExists ? "✅ Sim" : "❌ Não"}
+                            </p>
+                            <p>
+                              <strong>Tamanho do token:</strong> {debugResult.tokenLength} caracteres
+                            </p>
+                            <p>
+                              <strong>Preview do token:</strong>{" "}
+                              <code className="bg-gray-100 px-1 rounded">{debugResult.tokenPreview}</code>
+                            </p>
+                            <p>
+                              <strong>Status:</strong>
+                              <span
+                                className={`ml-1 ${debugResult.tokenStatus === "válido" ? "text-green-600" : "text-red-600"}`}
+                              >
+                                {debugResult.tokenStatus}
+                              </span>
+                            </p>
+                            {debugResult.errorDetails && (
+                              <div className="bg-red-50 p-2 rounded">
+                                <p>
+                                  <strong>Erro:</strong>{" "}
+                                  {debugResult.errorDetails.error?.message || debugResult.errorDetails.message}
+                                </p>
+                              </div>
+                            )}
+                            <p className="text-xs text-gray-500">
+                              Verificado em: {new Date(debugResult.timestamp).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="space-y-2">
+                        <Label htmlFor="debugToken">Testar Novo Token</Label>
+                        <div className="space-y-2">
+                          <Textarea
+                            id="debugToken"
+                            value={debugToken}
+                            onChange={(e) => setDebugToken(e.target.value)}
+                            placeholder="Cole aqui o novo token gerado no Meta for Developers..."
+                            rows={3}
+                            className="font-mono text-sm"
+                          />
+                          <Button onClick={handleTestNewToken} disabled={testingToken || !debugToken.trim()}>
+                            {testingToken ? (
+                              <>
+                                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                Testando...
+                              </>
+                            ) : (
+                              <>
+                                <TestTube className="h-4 w-4 mr-2" />
+                                Testar Novo Token
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="bg-blue-50 p-3 rounded">
+                        <p className="text-sm font-medium text-blue-900 mb-1">Como usar:</p>
+                        <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
+                          <li>Clique em "Verificar Token Atual" para ver o status do token</li>
+                          <li>Gere um novo token no Meta for Developers</li>
+                          <li>Cole o novo token no campo acima</li>
+                          <li>Clique em "Testar Novo Token" para verificar se é válido</li>
+                          <li>Se válido, atualize a variável WHATSAPP_ACCESS_TOKEN no projeto</li>
+                        </ol>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

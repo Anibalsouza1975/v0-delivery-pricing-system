@@ -9,38 +9,80 @@ export async function GET(request: NextRequest) {
   const token = searchParams.get("hub.verify_token")
   const challenge = searchParams.get("hub.challenge")
 
-  // Token de verificação (configure no seu painel Meta)
-  const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || "cartago_webhook_token"
+  const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN
+
+  console.log("[v0] Verificação webhook - Mode:", mode, "Token recebido:", token, "Token esperado:", VERIFY_TOKEN)
+  console.log("[v0] URL completa:", request.url)
+  console.log("[v0] Headers:", Object.fromEntries(request.headers.entries()))
 
   if (mode === "subscribe" && token === VERIFY_TOKEN) {
-    console.log("[v0] Webhook verificado com sucesso")
+    console.log("[v0] Webhook verificado com sucesso - Challenge:", challenge)
     return new NextResponse(challenge)
   }
 
+  console.log("[v0] Webhook rejeitado - tokens não coincidem")
   return new NextResponse("Forbidden", { status: 403 })
 }
+
+const mensagensProcessadas = new Set<string>()
 
 // Recebimento de mensagens
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    console.log("[v0] Webhook recebido:", JSON.stringify(body, null, 2))
+    console.log("[v0] ===== WEBHOOK RECEBIDO =====")
+    console.log("[v0] Timestamp:", new Date().toISOString())
+    console.log("[v0] Headers:", Object.fromEntries(request.headers.entries()))
+    console.log("[v0] Body completo:", JSON.stringify(body, null, 2))
 
     // Verifica se é uma mensagem de texto
     if (body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]) {
       const message = body.entry[0].changes[0].value.messages[0]
       const from = message.from // Número do cliente
       const text = message.text?.body // Texto da mensagem
+      const messageId = message.id // ID único da mensagem
+
+      console.log("[v0] Mensagem detectada - De:", from, "Texto:", text, "ID:", messageId)
+
+      if (mensagensProcessadas.has(messageId)) {
+        console.log("[v0] Mensagem já processada, ignorando:", messageId)
+        return NextResponse.json({ status: "already_processed" })
+      }
+
+      mensagensProcessadas.add(messageId)
 
       if (text) {
+        console.log("[v0] Processando mensagem com IA...")
+        console.log("[v0] Usando modelo Groq com contexto do Cartago Burger Grill")
+
         // Processa mensagem com IA
         const resposta = await processarMensagemComIA(text, from)
+        console.log("[v0] Resposta da IA gerada:", resposta)
 
         // Envia resposta via WhatsApp
-        await enviarMensagemWhatsApp(from, resposta)
+        console.log("[v0] Enviando resposta via WhatsApp para:", from)
+        const enviado = await enviarMensagemWhatsApp(from, resposta)
+
+        if (enviado) {
+          console.log("[v0] Mensagem enviada com sucesso!")
+        } else {
+          console.log("[v0] Falha ao enviar mensagem")
+        }
       }
+    } else {
+      console.log("[v0] Webhook recebido mas não é uma mensagem de texto")
+      console.log("[v0] Estrutura do body:", {
+        hasEntry: !!body.entry,
+        entryLength: body.entry?.length,
+        hasChanges: !!body.entry?.[0]?.changes,
+        changesLength: body.entry?.[0]?.changes?.length,
+        hasValue: !!body.entry?.[0]?.changes?.[0]?.value,
+        hasMessages: !!body.entry?.[0]?.changes?.[0]?.value?.messages,
+        messagesLength: body.entry?.[0]?.changes?.[0]?.value?.messages?.length,
+      })
     }
 
+    console.log("[v0] ===== FIM WEBHOOK =====")
     return NextResponse.json({ status: "success" })
   } catch (error) {
     console.error("[v0] Erro no webhook:", error)
@@ -50,6 +92,8 @@ export async function POST(request: NextRequest) {
 
 async function processarMensagemComIA(mensagem: string, telefone: string): Promise<string> {
   try {
+    console.log("[v0] Iniciando processamento IA para:", mensagem)
+
     // Contexto do negócio (seria carregado do banco de dados)
     const contextoNegocio = `
     Você é o assistente virtual do Cartago Burger Grill, um restaurante especializado em hambúrgueres artesanais.
@@ -78,8 +122,9 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
     - Mantenha respostas concisas mas informativas
     `
 
+    console.log("[v0] Chamando API Groq...")
     const { text } = await generateText({
-      model: groq("llama-3.1-70b-versatile"),
+      model: groq("llama-3.3-70b-versatile"),
       messages: [
         {
           role: "system",
@@ -94,6 +139,7 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
       temperature: 0.7,
     })
 
+    console.log("[v0] Resposta da IA recebida:", text)
     return text
   } catch (error) {
     console.error("[v0] Erro ao processar IA:", error)
@@ -101,15 +147,25 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
   }
 }
 
-async function enviarMensagemWhatsApp(para: string, mensagem: string): Promise<void> {
+async function enviarMensagemWhatsApp(para: string, mensagem: string): Promise<boolean> {
   try {
     const token = process.env.WHATSAPP_ACCESS_TOKEN
     const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID
 
+    console.log("[v0] Verificando tokens - Token existe:", !!token, "Phone ID existe:", !!phoneNumberId)
+
     if (!token || !phoneNumberId) {
       console.error("[v0] Tokens WhatsApp não configurados")
-      return
+      return false
     }
+
+    console.log("[v0] Enviando para API WhatsApp:", `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`)
+    console.log("[v0] Payload:", {
+      messaging_product: "whatsapp",
+      to: para,
+      type: "text",
+      text: { body: mensagem },
+    })
 
     const response = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
       method: "POST",
@@ -127,13 +183,19 @@ async function enviarMensagemWhatsApp(para: string, mensagem: string): Promise<v
       }),
     })
 
+    console.log("[v0] Status da resposta:", response.status)
+
     if (!response.ok) {
       const error = await response.text()
       console.error("[v0] Erro ao enviar mensagem WhatsApp:", error)
+      return false
     } else {
-      console.log("[v0] Mensagem enviada com sucesso para:", para)
+      const responseData = await response.json()
+      console.log("[v0] Mensagem enviada com sucesso para:", para, "Resposta:", responseData)
+      return true
     }
   } catch (error) {
     console.error("[v0] Erro na API WhatsApp:", error)
+    return false
   }
 }

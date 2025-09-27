@@ -248,7 +248,7 @@ export default function DashboardExecutivoModule() {
     vendasMesPassado: 0,
   })
   const [relatorioDetalhado, setRelatorioDetalhado] = useState<RelatorioDetalhado | null>(null)
-  const [filtroData, setFiltroData] = useState("hoje")
+  const [filtroData, setFiltroData] = useState("semana") // Alterado de "hoje" para "semana"
   const [mostrarLucros, setMostrarLucros] = useState(false)
   const [criterioRanking, setCriterioRanking] = useState<"quantidade" | "receita" | "lucro" | "margem">("quantidade")
   const [visualizacaoRanking, setVisualizacaoRanking] = useState<"lista" | "grid" | "grafico">("lista")
@@ -1152,7 +1152,7 @@ export default function DashboardExecutivoModule() {
             <XAxis type="number" />
             <YAxis dataKey="nome" type="category" width={120} />
             <Tooltip
-              formatter={(value: any) => [
+              formatter={(value: any, name: string) => [
                 criterioRanking === "quantidade"
                   ? `${value} unidades`
                   : criterioRanking === "receita" || criterioRanking === "lucro"
