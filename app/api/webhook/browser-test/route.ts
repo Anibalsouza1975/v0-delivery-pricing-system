@@ -75,12 +75,17 @@ export async function POST(request: NextRequest) {
           })
         })
       }
+
+      console.log("[v0] ⚠️ AVISO: Este é um endpoint de TESTE apenas!")
+      console.log("[v0] ⚠️ Para auto-atendimento com IA, use: /api/webhook/whatsapp")
+      console.log("[v0] ⚠️ Este endpoint NÃO envia respostas automáticas")
     }
 
     return NextResponse.json({
       status: "received",
       timestamp: new Date().toISOString(),
       message: "Webhook funcionando!",
+      warning: "Este endpoint é apenas para teste. Para auto-atendimento, use /api/webhook/whatsapp",
     })
   } catch (error) {
     console.log("[v0] POST error:", error)

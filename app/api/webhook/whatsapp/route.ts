@@ -282,50 +282,76 @@ async function enviarMensagemWhatsApp(para: string, mensagem: string): Promise<b
     const token = process.env.WHATSAPP_ACCESS_TOKEN
     const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID
 
-    console.log("[v0] Verificando tokens - Token existe:", !!token, "Phone ID existe:", !!phoneNumberId)
+    console.log("[v0] ===== ENVIANDO MENSAGEM WHATSAPP =====")
+    console.log("[v0] Para:", para)
+    console.log("[v0] Mensagem:", mensagem)
+    console.log("[v0] Token existe:", !!token)
+    console.log("[v0] Token primeiros 10 chars:", token?.substring(0, 10))
+    console.log("[v0] Phone ID existe:", !!phoneNumberId)
+    console.log("[v0] Phone ID:", phoneNumberId)
 
     if (!token || !phoneNumberId) {
-      console.error("[v0] Tokens WhatsApp não configurados")
+      console.error("[v0] ❌ Tokens WhatsApp não configurados")
+      console.error("[v0] - WHATSAPP_ACCESS_TOKEN:", !!token)
+      console.error("[v0] - WHATSAPP_PHONE_NUMBER_ID:", !!phoneNumberId)
       return false
     }
 
-    console.log("[v0] Enviando para API WhatsApp:", `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`)
-    console.log("[v0] Payload:", {
+    const url = `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`
+    const payload = {
       messaging_product: "whatsapp",
       to: para,
       type: "text",
       text: { body: mensagem },
-    })
+    }
 
-    const response = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
+    console.log("[v0] URL da API:", url)
+    console.log("[v0] Payload completo:", JSON.stringify(payload, null, 2))
+
+    const response = await fetch(url, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        messaging_product: "whatsapp",
-        to: para,
-        type: "text",
-        text: {
-          body: mensagem,
-        },
-      }),
+      body: JSON.stringify(payload),
     })
 
     console.log("[v0] Status da resposta:", response.status)
+    console.log("[v0] Headers da resposta:", Object.fromEntries(response.headers.entries()))
+
+    const responseText = await response.text()
+    console.log("[v0] Resposta completa:", responseText)
 
     if (!response.ok) {
-      const error = await response.text()
-      console.error("[v0] Erro ao enviar mensagem WhatsApp:", error)
+      console.error("[v0] ❌ Erro ao enviar mensagem WhatsApp")
+      console.error("[v0] Status:", response.status)
+      console.error("[v0] Resposta:", responseText)
+
+      try {
+        const errorData = JSON.parse(responseText)
+        console.error("[v0] Erro detalhado:", JSON.stringify(errorData, null, 2))
+      } catch (e) {
+        console.error("[v0] Não foi possível parsear erro como JSON")
+      }
+
       return false
     } else {
-      const responseData = await response.json()
-      console.log("[v0] Mensagem enviada com sucesso para:", para, "Resposta:", responseData)
+      console.log("[v0] ✅ Mensagem enviada com sucesso!")
+
+      try {
+        const responseData = JSON.parse(responseText)
+        console.log("[v0] Dados da resposta:", JSON.stringify(responseData, null, 2))
+      } catch (e) {
+        console.log("[v0] Resposta não é JSON válido:", responseText)
+      }
+
+      console.log("[v0] ===== FIM ENVIO MENSAGEM =====")
       return true
     }
   } catch (error) {
-    console.error("[v0] Erro na API WhatsApp:", error)
+    console.error("[v0] ❌ Erro crítico na API WhatsApp:", error)
+    console.error("[v0] Stack trace:", error instanceof Error ? error.stack : "No stack trace")
     return false
   }
 }
