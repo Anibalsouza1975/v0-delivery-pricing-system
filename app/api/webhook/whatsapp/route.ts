@@ -11,16 +11,22 @@ export async function GET(request: NextRequest) {
 
   const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN
 
-  console.log("[v0] Verificação webhook - Mode:", mode, "Token recebido:", token, "Token esperado:", VERIFY_TOKEN)
+  console.log("[v0] ===== VERIFICAÇÃO WEBHOOK GET =====")
+  console.log("[v0] Timestamp:", new Date().toISOString())
+  console.log("[v0] Mode:", mode)
+  console.log("[v0] Token recebido:", token)
+  console.log("[v0] Token esperado:", VERIFY_TOKEN)
+  console.log("[v0] Challenge:", challenge)
   console.log("[v0] URL completa:", request.url)
   console.log("[v0] Headers:", Object.fromEntries(request.headers.entries()))
+  console.log("[v0] ===== FIM VERIFICAÇÃO =====")
 
   if (mode === "subscribe" && token === VERIFY_TOKEN) {
-    console.log("[v0] Webhook verificado com sucesso - Challenge:", challenge)
+    console.log("[v0] ✅ Webhook verificado com sucesso - Challenge:", challenge)
     return new NextResponse(challenge)
   }
 
-  console.log("[v0] Webhook rejeitado - tokens não coincidem")
+  console.log("[v0] ❌ Webhook rejeitado - tokens não coincidem")
   return new NextResponse("Forbidden", { status: 403 })
 }
 
@@ -30,9 +36,11 @@ const mensagensProcessadas = new Set<string>()
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    console.log("[v0] ===== WEBHOOK RECEBIDO =====")
+    console.log("[v0] ===== WEBHOOK POST RECEBIDO =====")
     console.log("[v0] Timestamp:", new Date().toISOString())
-    console.log("[v0] Headers:", Object.fromEntries(request.headers.entries()))
+    console.log("[v0] User-Agent:", request.headers.get("user-agent"))
+    console.log("[v0] X-Hub-Signature-256:", request.headers.get("x-hub-signature-256"))
+    console.log("[v0] Headers completos:", Object.fromEntries(request.headers.entries()))
     console.log("[v0] Body completo:", JSON.stringify(body, null, 2))
 
     // Verifica se é uma mensagem de texto
@@ -85,7 +93,7 @@ export async function POST(request: NextRequest) {
     console.log("[v0] ===== FIM WEBHOOK =====")
     return NextResponse.json({ status: "success" })
   } catch (error) {
-    console.error("[v0] Erro no webhook:", error)
+    console.error("[v0] ❌ Erro no webhook:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
