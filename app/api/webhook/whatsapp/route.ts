@@ -37,76 +37,135 @@ const mensagensProcessadas = new Set<string>()
 // Recebimento de mensagens
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
     console.log("[v0] ===== WEBHOOK POST RECEBIDO =====")
     console.log("[v0] Timestamp:", new Date().toISOString())
+    console.log("[v0] Method:", request.method)
+    console.log("[v0] URL:", request.url)
     console.log("[v0] User-Agent:", request.headers.get("user-agent"))
     console.log("[v0] X-Hub-Signature-256:", request.headers.get("x-hub-signature-256"))
     console.log("[v0] X-Forwarded-For:", request.headers.get("x-forwarded-for"))
     console.log("[v0] Content-Type:", request.headers.get("content-type"))
+    console.log("[v0] Content-Length:", request.headers.get("content-length"))
     console.log("[v0] Headers completos:", Object.fromEntries(request.headers.entries()))
-    console.log("[v0] Body completo:", JSON.stringify(body, null, 2))
+
+    // Verificar se o body existe
+    const rawBody = await request.text()
+    console.log("[v0] Raw body length:", rawBody.length)
+    console.log("[v0] Raw body:", rawBody)
+
+    if (!rawBody) {
+      console.log("[v0] ⚠️ Body vazio recebido")
+      return NextResponse.json({ status: "empty_body" })
+    }
+
+    let body
+    try {
+      body = JSON.parse(rawBody)
+    } catch (parseError) {
+      console.error("[v0] ❌ Erro ao fazer parse do JSON:", parseError)
+      console.log("[v0] Raw body que causou erro:", rawBody)
+      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 })
+    }
+
+    console.log("[v0] Body parseado com sucesso:", JSON.stringify(body, null, 2))
+    console.log("[v0] Tipo de objeto:", body.object)
+    console.log("[v0] É WhatsApp Business Account?", body.object === "whatsapp_business_account")
 
     if (body.object === "whatsapp_business_account") {
       console.log("[v0] ✅ Webhook do WhatsApp Business Account detectado")
 
-      // Verifica se é uma mensagem de texto
-      if (body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]) {
-        const message = body.entry[0].changes[0].value.messages[0]
-        const from = message.from // Número do cliente
-        const text = message.text?.body // Texto da mensagem
-        const messageId = message.id // ID único da mensagem
+      const entry = body.entry?.[0]
+      const changes = entry?.changes?.[0]
+      const value = changes?.value
+      const messages = value?.messages
+      const statuses = value?.statuses
 
-        console.log("[v0] Mensagem detectada - De:", from, "Texto:", text, "ID:", messageId)
+      console.log("[v0] Estrutura detalhada:")
+      console.log("[v0] - Entry exists:", !!entry)
+      console.log("[v0] - Entry ID:", entry?.id)
+      console.log("[v0] - Changes exists:", !!changes)
+      console.log("[v0] - Changes field:", changes?.field)
+      console.log("[v0] - Value exists:", !!value)
+      console.log("[v0] - Messages exists:", !!messages)
+      console.log("[v0] - Messages length:", messages?.length || 0)
+      console.log("[v0] - Statuses exists:", !!statuses)
+      console.log("[v0] - Statuses length:", statuses?.length || 0)
 
-        if (mensagensProcessadas.has(messageId)) {
-          console.log("[v0] Mensagem já processada, ignorando:", messageId)
-          return NextResponse.json({ status: "already_processed" })
-        }
+      // Processar mensagens recebidas
+      if (messages && messages.length > 0) {
+        for (const message of messages) {
+          const from = message.from
+          const text = message.text?.body
+          const messageId = message.id
+          const timestamp = message.timestamp
 
-        mensagensProcessadas.add(messageId)
+          console.log("[v0] 🎉 MENSAGEM REAL DETECTADA!")
+          console.log("[v0] - De:", from)
+          console.log("[v0] - Texto:", text)
+          console.log("[v0] - ID:", messageId)
+          console.log("[v0] - Timestamp:", timestamp)
+          console.log("[v0] - Tipo:", message.type)
 
-        if (text) {
-          console.log("[v0] Processando mensagem com IA...")
-          console.log("[v0] Usando modelo Groq com contexto do Cartago Burger Grill")
+          if (mensagensProcessadas.has(messageId)) {
+            console.log("[v0] Mensagem já processada, ignorando:", messageId)
+            continue
+          }
 
-          // Processa mensagem com IA
-          const resposta = await processarMensagemComIA(text, from)
-          console.log("[v0] Resposta da IA gerada:", resposta)
+          mensagensProcessadas.add(messageId)
 
-          // Envia resposta via WhatsApp
-          console.log("[v0] Enviando resposta via WhatsApp para:", from)
-          const enviado = await enviarMensagemWhatsApp(from, resposta)
+          if (text && message.type === "text") {
+            console.log("[v0] Processando mensagem de texto com IA...")
 
-          if (enviado) {
-            console.log("[v0] Mensagem enviada com sucesso!")
+            try {
+              const resposta = await processarMensagemComIA(text, from)
+              console.log("[v0] Resposta da IA gerada:", resposta)
+
+              const enviado = await enviarMensagemWhatsApp(from, resposta)
+
+              if (enviado) {
+                console.log("[v0] ✅ Mensagem enviada com sucesso para:", from)
+              } else {
+                console.log("[v0] ❌ Falha ao enviar mensagem para:", from)
+              }
+            } catch (error) {
+              console.error("[v0] ❌ Erro ao processar mensagem:", error)
+            }
           } else {
-            console.log("[v0] Falha ao enviar mensagem")
+            console.log("[v0] Mensagem não é de texto ou não tem conteúdo, tipo:", message.type)
           }
         }
-      } else {
-        console.log("[v0] Webhook recebido mas não é uma mensagem de texto")
-        console.log("[v0] Estrutura do body:", {
-          hasEntry: !!body.entry,
-          entryLength: body.entry?.length,
-          hasChanges: !!body.entry?.[0]?.changes,
-          changesLength: body.entry?.[0]?.changes?.length,
-          hasValue: !!body.entry?.[0]?.changes?.[0]?.value,
-          hasMessages: !!body.entry?.[0]?.changes?.[0]?.value?.messages,
-          messagesLength: body.entry?.[0]?.changes?.[0]?.value?.messages?.length,
-        })
+      }
+
+      // Processar status de mensagens (entregue, lida, etc.)
+      if (statuses && statuses.length > 0) {
+        console.log("[v0] 📊 Status de mensagens recebidos:")
+        for (const status of statuses) {
+          console.log("[v0] - Status ID:", status.id)
+          console.log("[v0] - Status:", status.status)
+          console.log("[v0] - Timestamp:", status.timestamp)
+          console.log("[v0] - Recipient ID:", status.recipient_id)
+        }
+      }
+
+      if (!messages?.length && !statuses?.length) {
+        console.log("[v0] ⚠️ Webhook recebido mas sem mensagens ou status")
+        console.log("[v0] Pode ser webhook de teste ou configuração")
       }
     } else {
       console.log("[v0] ⚠️ Webhook recebido mas não é do WhatsApp Business Account")
       console.log("[v0] Object type:", body.object)
-      console.log("[v0] Possível webhook de teste ou configuração")
+      console.log("[v0] Possível webhook de teste ou outro serviço")
     }
 
     console.log("[v0] ===== FIM WEBHOOK =====")
-    return NextResponse.json({ status: "success" })
+    return NextResponse.json({ status: "success", received: true })
   } catch (error) {
-    console.error("[v0] ❌ Erro no webhook:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    console.error("[v0] ❌ Erro crítico no webhook:", error)
+    console.error("[v0] Stack trace:", error instanceof Error ? error.stack : "No stack trace")
+    return NextResponse.json(
+      { error: "Internal server error", details: error instanceof Error ? error.message : "Unknown error" },
+      { status: 500 },
+    )
   }
 }
 

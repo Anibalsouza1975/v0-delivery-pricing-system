@@ -18,15 +18,24 @@ export async function POST(request: NextRequest) {
     console.log("[v0] Phone Number ID:", phoneNumberId)
 
     let webhookAccessible = false
+    let webhookVerificationWorking = false
     try {
       const testResponse = await fetch(
         `${webhookUrl}?hub.mode=subscribe&hub.verify_token=${verifyToken}&hub.challenge=test123`,
         {
           method: "GET",
+          headers: {
+            "User-Agent": "Meta-Webhook-Test/1.0",
+          },
         },
       )
-      webhookAccessible = testResponse.ok && (await testResponse.text()) === "test123"
+      webhookAccessible = testResponse.ok
+      const responseText = await testResponse.text()
+      webhookVerificationWorking = responseText === "test123"
+
       console.log("[v0] Webhook acessível:", webhookAccessible)
+      console.log("[v0] Webhook verification working:", webhookVerificationWorking)
+      console.log("[v0] Response text:", responseText)
     } catch (error) {
       console.error("[v0] Erro ao testar webhook:", error)
     }
@@ -34,10 +43,10 @@ export async function POST(request: NextRequest) {
     let apiConnectionStatus = "unknown"
     let webhookConfigured = false
     let phoneNumberInfo = null
+    let subscriptionStatus = null
 
     if (accessToken && phoneNumberId) {
       try {
-        // Teste de conexão com a API do WhatsApp
         const response = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}`, {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -53,8 +62,24 @@ export async function POST(request: NextRequest) {
           apiConnectionStatus = "connected"
           phoneNumberInfo = data
 
-          // Verificar se há configuração de webhook
-          webhookConfigured = !!data.webhook_configuration
+          try {
+            const subscriptionResponse = await fetch(
+              `https://graph.facebook.com/v18.0/${phoneNumberId}/subscribed_apps`,
+              {
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                },
+              },
+            )
+
+            if (subscriptionResponse.ok) {
+              subscriptionStatus = await subscriptionResponse.json()
+              console.log("[v0] Status de subscrição:", subscriptionStatus)
+              webhookConfigured = subscriptionStatus?.data?.length > 0
+            }
+          } catch (subError) {
+            console.error("[v0] Erro ao verificar subscrições:", subError)
+          }
         } else {
           const errorText = await response.text()
           console.error("[v0] Erro na API WhatsApp:", errorText)
@@ -70,24 +95,43 @@ export async function POST(request: NextRequest) {
       webhookUrl,
       verifyToken,
       webhookAccessible,
+      webhookVerificationWorking,
       webhookConfigured,
       apiConnectionStatus,
       phoneNumberInfo,
+      subscriptionStatus,
       realMessagesReceived: false, // Seria true se tivéssemos logs de mensagens reais
       accessTokenExists: !!accessToken,
       phoneNumberIdExists: !!phoneNumberId,
       timestamp: new Date().toISOString(),
       recommendations: [],
+      testEndpoints: {
+        metaTest: `${protocol}://${currentUrl.replace(/^https?:\/\//, "")}/api/webhook/meta-test`,
+        webhookTest: `${webhookUrl}?hub.mode=subscribe&hub.verify_token=${verifyToken}&hub.challenge=test123`,
+      },
     }
 
     if (!webhookAccessible) {
-      diagnostics.recommendations.push("Webhook não está acessível - verifique a URL no Meta")
+      diagnostics.recommendations.push("❌ Webhook não está acessível - verifique se a URL está correta no Meta")
+    }
+    if (!webhookVerificationWorking) {
+      diagnostics.recommendations.push("❌ Verificação do webhook falhou - verifique o token de verificação")
     }
     if (apiConnectionStatus === "error") {
-      diagnostics.recommendations.push("Token de acesso inválido - verifique as credenciais")
+      diagnostics.recommendations.push("❌ Token de acesso inválido - gere um novo token no Meta")
+    }
+    if (apiConnectionStatus === "connection_failed") {
+      diagnostics.recommendations.push("❌ Falha na conexão com API - verifique conectividade")
     }
     if (!webhookConfigured) {
-      diagnostics.recommendations.push("Webhook não configurado no Meta - configure na seção Webhooks")
+      diagnostics.recommendations.push(
+        "⚠️ Webhook pode não estar configurado corretamente - verifique subscrições no Meta",
+      )
+    }
+    if (webhookAccessible && webhookVerificationWorking && apiConnectionStatus === "connected" && !webhookConfigured) {
+      diagnostics.recommendations.push(
+        "🔧 Tudo parece correto, mas mensagens não chegam - verifique se o campo 'messages' está subscrito no Meta",
+      )
     }
 
     console.log("[v0] Diagnóstico completo:", diagnostics)
