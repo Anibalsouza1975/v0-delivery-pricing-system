@@ -7,6 +7,19 @@ export async function GET(request: NextRequest) {
   const token = searchParams.get("hub.verify_token")
   const challenge = searchParams.get("hub.challenge")
 
+  // Se não tem parâmetros, é um teste do navegador
+  if (!mode && !token && !challenge) {
+    return NextResponse.json({
+      status: "✅ Meta Debug endpoint funcionando!",
+      timestamp: new Date().toISOString(),
+      environment: {
+        WHATSAPP_VERIFY_TOKEN: process.env.WHATSAPP_VERIFY_TOKEN ? "Configurado" : "Não configurado",
+        WHATSAPP_ACCESS_TOKEN: process.env.WHATSAPP_ACCESS_TOKEN ? "Configurado" : "Não configurado",
+      },
+      test_url: `${request.url}?hub.mode=subscribe&hub.verify_token=${process.env.WHATSAPP_VERIFY_TOKEN}&hub.challenge=test123`,
+    })
+  }
+
   const debugInfo = {
     timestamp: new Date().toISOString(),
     url: request.url,

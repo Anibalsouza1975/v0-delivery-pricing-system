@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server"
+import { NextResponse } from "next/server"
 
 // Endpoint que força o Meta a reconhecer o webhook
 export async function GET(request: NextRequest) {
@@ -10,6 +11,22 @@ export async function GET(request: NextRequest) {
   console.log("[v0] ===== FORCE META VERIFICATION =====")
   console.log("[v0] Timestamp:", new Date().toISOString())
   console.log("[v0] Full URL:", request.url)
+
+  // Se não tem parâmetros, é um teste do navegador
+  if (!mode && !token && !challenge) {
+    return NextResponse.json({
+      status: "✅ Force Meta endpoint funcionando!",
+      timestamp: new Date().toISOString(),
+      config: {
+        WHATSAPP_VERIFY_TOKEN: process.env.WHATSAPP_VERIFY_TOKEN ? "✅ OK" : "❌ Missing",
+        WHATSAPP_ACCESS_TOKEN: process.env.WHATSAPP_ACCESS_TOKEN ? "✅ OK" : "❌ Missing",
+        WHATSAPP_PHONE_NUMBER_ID: process.env.WHATSAPP_PHONE_NUMBER_ID ? "✅ OK" : "❌ Missing",
+      },
+      instructions:
+        "Para verificação Meta, adicione os parâmetros: ?hub.mode=subscribe&hub.verify_token=TOKEN&hub.challenge=123",
+    })
+  }
+
   console.log("[v0] Mode:", mode)
   console.log("[v0] Token received:", token)
   console.log("[v0] Token expected:", process.env.WHATSAPP_VERIFY_TOKEN)

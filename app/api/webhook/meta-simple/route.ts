@@ -13,6 +13,15 @@ export async function GET(request: NextRequest) {
   console.log("[v0] Challenge:", challenge)
   console.log("[v0] Expected token:", process.env.WHATSAPP_VERIFY_TOKEN)
 
+  // Se não tem parâmetros, é um teste do navegador
+  if (!mode && !token && !challenge) {
+    return NextResponse.json({
+      status: "✅ Meta Simple endpoint funcionando!",
+      timestamp: new Date().toISOString(),
+      note: "Para verificação Meta, use: ?hub.mode=subscribe&hub.verify_token=TOKEN&hub.challenge=123",
+    })
+  }
+
   if (mode === "subscribe" && token === process.env.WHATSAPP_VERIFY_TOKEN) {
     console.log("[v0] ✅ Simple verification SUCCESS")
     return new Response(challenge, {
