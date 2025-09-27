@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { generateText } from "ai"
 import { groq } from "@ai-sdk/groq"
+import { createClient } from "@supabase/supabase-js"
 
 // Verificação do webhook (Meta exige isso)
 export async function GET(request: NextRequest) {
@@ -80,6 +81,7 @@ export async function GET(request: NextRequest) {
 }
 
 const mensagensProcessadas = new Set<string>()
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
 // Recebimento de mensagens
 export async function POST(request: NextRequest) {
@@ -164,6 +166,7 @@ export async function POST(request: NextRequest) {
             console.log("[v0] Processando mensagem de texto com IA...")
 
             try {
+              await salvarConversaNoBanco(from, text, messageId)
               const resposta = await processarMensagemComIA(text, from)
               console.log("[v0] Resposta da IA gerada:", resposta)
 
@@ -171,6 +174,7 @@ export async function POST(request: NextRequest) {
 
               if (enviado) {
                 console.log("[v0] ✅ Mensagem enviada com sucesso para:", from)
+                await salvarRespostaNoBanco(from, resposta)
               } else {
                 console.log("[v0] ❌ Falha ao enviar mensagem para:", from)
               }
@@ -323,5 +327,103 @@ async function enviarMensagemWhatsApp(para: string, mensagem: string): Promise<b
   } catch (error) {
     console.error("[v0] Erro na API WhatsApp:", error)
     return false
+  }
+}
+
+async function salvarConversaNoBanco(telefone: string, mensagem: string, messageId: string) {
+  try {
+    console.log("[v0] Salvando conversa no banco:", telefone, mensagem)
+
+    // Verificar se já existe uma conversa para este telefone
+    const { data: conversaExistente } = await supabase
+      .from("whatsapp_conversas")
+      .select("id")
+      .eq("cliente_telefone", telefone)
+      .single()
+
+    let conversaId = conversaExistente?.id
+
+    if (!conversaId) {
+      // Criar nova conversa
+      const { data: novaConversa, error: erroConversa } = await supabase
+        .from("whatsapp_conversas")
+        .insert({
+          cliente_telefone: telefone,
+          cliente_nome: telefone, // Será atualizado depois se necessário
+          status: "ativa",
+          ultima_mensagem: mensagem,
+          session_id: `session_${telefone}_${Date.now()}`,
+        })
+        .select("id")
+        .single()
+
+      if (erroConversa) {
+        console.error("[v0] Erro ao criar conversa:", erroConversa)
+        return
+      }
+
+      conversaId = novaConversa.id
+      console.log("[v0] Nova conversa criada:", conversaId)
+    } else {
+      // Atualizar conversa existente
+      await supabase
+        .from("whatsapp_conversas")
+        .update({
+          ultima_mensagem: mensagem,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", conversaId)
+
+      console.log("[v0] Conversa atualizada:", conversaId)
+    }
+
+    // Salvar mensagem
+    const { error: erroMensagem } = await supabase.from("whatsapp_mensagens").insert({
+      conversa_id: conversaId,
+      message_id: messageId,
+      tipo: "recebida",
+      conteudo: mensagem,
+      status: "entregue",
+    })
+
+    if (erroMensagem) {
+      console.error("[v0] Erro ao salvar mensagem:", erroMensagem)
+    } else {
+      console.log("[v0] Mensagem salva com sucesso")
+    }
+  } catch (error) {
+    console.error("[v0] Erro ao salvar no banco:", error)
+  }
+}
+
+async function salvarRespostaNoBanco(telefone: string, resposta: string) {
+  try {
+    console.log("[v0] Salvando resposta da IA no banco:", telefone)
+
+    // Buscar conversa existente
+    const { data: conversa } = await supabase
+      .from("whatsapp_conversas")
+      .select("id")
+      .eq("cliente_telefone", telefone)
+      .single()
+
+    if (conversa) {
+      // Salvar resposta da IA
+      const { error } = await supabase.from("whatsapp_mensagens").insert({
+        conversa_id: conversa.id,
+        message_id: `ai_${Date.now()}`,
+        tipo: "enviada",
+        conteudo: resposta,
+        status: "enviada",
+      })
+
+      if (error) {
+        console.error("[v0] Erro ao salvar resposta IA:", error)
+      } else {
+        console.log("[v0] Resposta IA salva com sucesso")
+      }
+    }
+  } catch (error) {
+    console.error("[v0] Erro ao salvar resposta IA:", error)
   }
 }
