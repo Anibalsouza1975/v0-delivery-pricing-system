@@ -189,7 +189,7 @@ export default function VendasModule() {
     return cats.sort()
   }, [itensDisponiveis])
 
-  const subtotal = carrinho.reduce((sum, item) => sum + ((item.preco || 0) * (item.quantidade || 0)), 0)
+  const subtotal = carrinho.reduce((sum, item) => sum + (item.preco || 0) * (item.quantidade || 0), 0)
   const total = Math.max(0, (subtotal || 0) - (desconto || 0) + (frete || 0))
 
   const adicionarAoCarrinho = (item: (typeof itensDisponiveis)[0]) => {
@@ -707,7 +707,14 @@ export default function VendasModule() {
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span>Subtotal:</span>
-                      <span>{/* Adding safety check for toLocaleString */(subtotal || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+                      <span>
+                        {
+                          /* Adding safety check for toLocaleString */ (subtotal || 0).toLocaleString("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          })
+                        }
+                      </span>
                     </div>
                     {(desconto || 0) > 0 && (
                       <div className="flex justify-between text-red-600">
@@ -724,7 +731,14 @@ export default function VendasModule() {
                     <Separator />
                     <div className="flex justify-between font-bold text-lg">
                       <span>Total:</span>
-                      <span>{/* Adding safety check for toLocaleString */(total || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+                      <span>
+                        {
+                          /* Adding safety check for toLocaleString */ (total || 0).toLocaleString("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          })
+                        }
+                      </span>
                     </div>
                   </div>
 
@@ -830,4 +844,68 @@ export default function VendasModule() {
                 <CardTitle className="text-sm">Faturamento Total</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className=\"text-2xl
+                <div className="text-2xl font-bold">
+                  {vendas
+                    .filter((v) => v.status !== "cancelado")
+                    .reduce((sum, v) => sum + (v.total || 0), 0)
+                    .toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                </div>
+                <p className="text-xs text-muted-foreground">Valor total arrecadado</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Ticket Médio</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {vendas.filter((v) => v.status !== "cancelado").length > 0
+                    ? (
+                        vendas.filter((v) => v.status !== "cancelado").reduce((sum, v) => sum + (v.total || 0), 0) /
+                        vendas.filter((v) => v.status !== "cancelado").length
+                      ).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+                    : "R$ 0,00"}
+                </div>
+                <p className="text-xs text-muted-foreground">Valor médio por venda</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Vendas Entregues</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{vendas.filter((v) => v.status === "entregue").length}</div>
+                <p className="text-xs text-muted-foreground">Pedidos concluídos</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Vendas por Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {["pendente", "confirmado", "preparando", "entregue", "cancelado"].map((status) => {
+                  const count = vendas.filter((v) => v.status === status).length
+                  const percentage = vendas.length > 0 ? (count / vendas.length) * 100 : 0
+                  return (
+                    <div key={status} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Badge className={getStatusColor(status as Venda["status"])}>{status}</Badge>
+                        <span className="text-sm">{count} vendas</span>
+                      </div>
+                      <span className="text-sm text-muted-foreground">{percentage.toFixed(1)}%</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  )
+}
