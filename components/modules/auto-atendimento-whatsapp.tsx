@@ -1181,25 +1181,54 @@ Verifique o console para mais detalhes.`)
                       O sistema interno funciona perfeitamente (teste do webhook passa), mas mensagens reais do WhatsApp
                       não chegam. Isso indica que o webhook não foi configurado no painel da Meta.
                     </p>
-                    <Button
-                      onClick={handleDiagnosticarWebhook}
-                      disabled={testingWebhookConfig || updatingWebhookUrl}
-                      variant="outline"
-                      size="sm"
-                      className="border-red-300 text-red-700 hover:bg-red-100 bg-transparent"
-                    >
-                      {testingWebhookConfig || updatingWebhookUrl ? (
-                        <>
-                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                          {updatingWebhookUrl ? "Corrigindo..." : "Diagnosticando..."}
-                        </>
-                      ) : (
-                        <>
-                          <Activity className="h-4 w-4 mr-2" />
-                          Diagnosticar Configuração Webhook
-                        </>
-                      )}
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={handleDiagnosticarWebhook}
+                        disabled={testingWebhookConfig || updatingWebhookUrl}
+                        variant="outline"
+                        size="sm"
+                        className="border-red-300 text-red-700 hover:bg-red-100 bg-transparent"
+                      >
+                        {testingWebhookConfig || updatingWebhookUrl ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            {updatingWebhookUrl ? "Corrigindo..." : "Diagnosticando..."}
+                          </>
+                        ) : (
+                          <>
+                            <Activity className="h-4 w-4 mr-2" />
+                            Diagnosticar Configuração Webhook
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        onClick={async () => {
+                          try {
+                            const response = await fetch("/api/whatsapp/webhook-test", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                test: "internal",
+                                message: "Teste interno do sistema",
+                                timestamp: new Date().toISOString(),
+                              }),
+                            })
+                            const data = await response.json()
+                            alert(
+                              `Teste interno realizado:\n\nStatus: ${data.status}\nTimestamp: ${data.timestamp}\n\nVerifique os logs do sistema para mais detalhes.`,
+                            )
+                          } catch (error) {
+                            alert("Erro no teste interno: " + error)
+                          }
+                        }}
+                        variant="outline"
+                        size="sm"
+                        className="border-blue-300 text-blue-700 hover:bg-blue-100 bg-transparent"
+                      >
+                        <TestTube className="h-4 w-4 mr-2" />
+                        Teste Interno
+                      </Button>
+                    </div>
                   </div>
 
                   {webhookDiagnostics && (
