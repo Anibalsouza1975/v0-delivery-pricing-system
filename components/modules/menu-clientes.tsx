@@ -24,6 +24,7 @@ import {
   ChevronRight,
   Clock,
   Copy,
+  X,
 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -798,7 +799,7 @@ export default function MenuClientesModule() {
   const cartItemCount = getCartItemCount()
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 pb-20">
       {!lojaAberta && (
         <div className="bg-gradient-to-r from-red-500 to-red-600 border-b border-red-300 py-3 shadow-lg">
           <div className="container mx-auto px-4">
@@ -870,17 +871,17 @@ export default function MenuClientesModule() {
         </div>
       </div>
 
-      <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-orange-100 shadow-sm">
+      <div className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-orange-100 shadow-sm">
         <div className="container mx-auto px-4">
-          <div className="flex gap-2 py-4 overflow-x-auto scrollbar-hide">
+          <div className="flex gap-2 py-3 overflow-x-auto scrollbar-hide">
             {categoriasDisponiveis.map((categoria) => (
               <button
                 key={categoria}
                 onClick={() => scrollToCategory(categoria)}
-                className={`flex-shrink-0 px-6 py-3 rounded-full font-medium transition-all duration-300 ${
+                className={`flex-shrink-0 px-4 py-2 rounded-full font-medium transition-all duration-300 text-sm ${
                   selectedCategory === categoria
-                    ? "bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg transform scale-105"
-                    : "bg-orange-100 text-orange-700 hover:bg-orange-200 hover:scale-105"
+                    ? "bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg"
+                    : "bg-orange-100 text-orange-700 hover:bg-orange-200"
                 }`}
               >
                 {categoria}
@@ -890,65 +891,154 @@ export default function MenuClientesModule() {
         </div>
       </div>
 
-      {getTemporaryPromotionItems().length > 0 && (
-        <div className="bg-gradient-to-r from-red-500 via-red-600 to-orange-500 py-8 relative overflow-hidden">
-          <div className="absolute inset-0 bg-black/10"></div>
-          <div className="container mx-auto px-4 relative">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="bg-white text-red-600 px-4 py-2 rounded-full text-sm font-bold animate-pulse shadow-lg">
-                🔥 NOVO
+      <div className="pt-16">
+        {getTemporaryPromotionItems().length > 0 && (
+          <div className="bg-gradient-to-r from-red-500 via-red-600 to-orange-500 py-8 relative overflow-hidden">
+            <div className="absolute inset-0 bg-black/10"></div>
+            <div className="container mx-auto px-4 relative">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="bg-white text-red-600 px-4 py-2 rounded-full text-sm font-bold animate-pulse shadow-lg">
+                  🔥 NOVO
+                </div>
+                <h2 className="text-2xl font-bold text-white drop-shadow-lg">Promoção 20% Off (Novidade Temporária)</h2>
               </div>
-              <h2 className="text-2xl font-bold text-white drop-shadow-lg">Promoção 20% Off (Novidade Temporária)</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {getTemporaryPromotionItems().map((item) => {
+                  const itemKey = getItemKey(item)
+                  const cartItem = cart[itemKey]
+                  const cartQuantity = cartItem?.quantity || 0
+                  const originalPrice = getItemPrice(item)
+                  const discountPrice = originalPrice * 0.8
+
+                  return (
+                    <div
+                      key={itemKey}
+                      className="flex bg-white rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 cursor-pointer transform hover:scale-105 border-2 border-white/20"
+                      onClick={() => handleProductClick(item)}
+                    >
+                      <div className="relative">
+                        <img
+                          src={getItemImage(item) || "/placeholder.svg"}
+                          alt={item.nome}
+                          className="w-36 h-36 object-cover flex-shrink-0"
+                        />
+                        {!lojaAberta && (
+                          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                            <span className="text-white font-bold text-sm">Fechado</span>
+                          </div>
+                        )}
+                        <div className="absolute top-3 left-3 bg-gradient-to-r from-red-500 to-red-600 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
+                          -20%
+                        </div>
+                      </div>
+                      <div className="flex-1 p-6 flex flex-col justify-between">
+                        <div>
+                          <h3 className="font-bold text-lg text-gray-900 mb-2">{item.nome}</h3>
+                          <p className="text-sm text-gray-600 mb-3 line-clamp-2">{item.descricao}</p>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex flex-col">
+                            <span className="text-sm text-gray-500 line-through">
+                              {(originalPrice || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                            </span>
+                            <span className="text-xl font-bold text-red-600">
+                              {(discountPrice || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                            </span>
+                          </div>
+                          <Button
+                            size="lg"
+                            className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg rounded-full px-6"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleProductClick(item)
+                            }}
+                          >
+                            <Plus className="h-5 w-5" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {getTemporaryPromotionItems().map((item) => {
+          </div>
+        )}
+
+        <div className="bg-gradient-to-br from-orange-50 to-white py-8">
+          <div className="container mx-auto px-4">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+                <span className="w-2 h-8 bg-gradient-to-b from-orange-500 to-red-500 rounded-full"></span>
+                Destaques
+              </h2>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => scrollHighlights("left")}
+                  className="border-orange-200 hover:bg-orange-50 rounded-full w-10 h-10 p-0"
+                >
+                  <ChevronLeft className="h-5 w-5 text-orange-600" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => scrollHighlights("right")}
+                  className="border-orange-200 hover:bg-orange-50 rounded-full w-10 h-10 p-0"
+                >
+                  <ChevronRight className="h-5 w-5 text-orange-600" />
+                </Button>
+              </div>
+            </div>
+
+            <div ref={highlightsRef} className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide">
+              {getHighlightItems().map((item) => {
                 const itemKey = getItemKey(item)
                 const cartItem = cart[itemKey]
                 const cartQuantity = cartItem?.quantity || 0
-                const originalPrice = getItemPrice(item)
-                const discountPrice = originalPrice * 0.8
 
                 return (
                   <div
                     key={itemKey}
-                    className="flex bg-white rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 cursor-pointer transform hover:scale-105 border-2 border-white/20"
+                    className="flex-shrink-0 w-80 bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer transform hover:scale-105 border border-orange-100"
                     onClick={() => handleProductClick(item)}
                   >
                     <div className="relative">
                       <img
                         src={getItemImage(item) || "/placeholder.svg"}
                         alt={item.nome}
-                        className="w-36 h-36 object-cover flex-shrink-0"
+                        className="w-full h-48 object-cover"
+                        loading="lazy"
                       />
-                      {!lojaAberta && (
-                        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                          <span className="text-white font-bold text-sm">Fechado</span>
+                      {cartQuantity > 0 && (
+                        <div className="absolute top-3 right-3 bg-gradient-to-r from-orange-500 to-red-500 text-white text-sm px-3 py-1 rounded-full font-medium shadow-lg">
+                          {cartQuantity}
                         </div>
                       )}
-                      <div className="absolute top-3 left-3 bg-gradient-to-r from-red-500 to-red-600 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
-                        -20%
+                      <div className="absolute top-3 left-3">
+                        <span className="bg-gradient-to-r from-yellow-400 to-orange-400 text-white text-xs px-3 py-1 rounded-full font-medium shadow-lg">
+                          ⭐ Destaque
+                        </span>
                       </div>
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
                     </div>
-                    <div className="flex-1 p-6 flex flex-col justify-between">
-                      <div>
-                        <h3 className="font-bold text-lg text-gray-900 mb-2">{item.nome}</h3>
-                        <p className="text-sm text-gray-600 mb-3 line-clamp-2">{item.descricao}</p>
-                      </div>
+                    <div className="p-6">
+                      <h3 className="font-bold text-lg text-gray-900 mb-2 line-clamp-1">{item.nome}</h3>
+                      {item.descricao && <p className="text-sm text-gray-600 mb-4 line-clamp-2">{item.descricao}</p>}
                       <div className="flex items-center justify-between">
-                        <div className="flex flex-col">
-                          <span className="text-sm text-gray-500 line-through">
-                            {(originalPrice || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                          </span>
-                          <span className="text-xl font-bold text-red-600">
-                            {(discountPrice || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                          </span>
-                        </div>
+                        <span className="text-2xl font-bold text-orange-600">
+                          {(getItemPrice(item) || 0).toLocaleString("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          })}
+                        </span>
                         <Button
                           size="lg"
-                          className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg rounded-full px-6"
+                          className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white shadow-lg rounded-full px-6"
                           onClick={(e) => {
                             e.stopPropagation()
-                            handleProductClick(item)
+                            openCustomizeModal(item)
                           }}
                         >
                           <Plus className="h-5 w-5" />
@@ -961,215 +1051,132 @@ export default function MenuClientesModule() {
             </div>
           </div>
         </div>
-      )}
 
-      <div className="bg-gradient-to-br from-orange-50 to-white py-8">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-              <span className="w-2 h-8 bg-gradient-to-b from-orange-500 to-red-500 rounded-full"></span>
-              Destaques
-            </h2>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => scrollHighlights("left")}
-                className="border-orange-200 hover:bg-orange-50 rounded-full w-10 h-10 p-0"
-              >
-                <ChevronLeft className="h-5 w-5 text-orange-600" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => scrollHighlights("right")}
-                className="border-orange-200 hover:bg-orange-50 rounded-full w-10 h-10 p-0"
-              >
-                <ChevronRight className="h-5 w-5 text-orange-600" />
-              </Button>
-            </div>
-          </div>
+        <div className="container mx-auto px-4 py-8">
+          {categoriasDisponiveis.slice(1).map((categoria) => {
+            if (categoriasPromocionais.includes(categoria)) return null
 
-          <div ref={highlightsRef} className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide">
-            {getHighlightItems().map((item) => {
-              const itemKey = getItemKey(item)
-              const cartItem = cart[itemKey]
-              const cartQuantity = cartItem?.quantity || 0
+            const categoryItems = getItemsByCategory(categoria)
+            if (categoryItems.length === 0) return null
 
-              return (
-                <div
-                  key={itemKey}
-                  className="flex-shrink-0 w-80 bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer transform hover:scale-105 border border-orange-100"
-                  onClick={() => handleProductClick(item)}
-                >
-                  <div className="relative">
-                    <img
-                      src={getItemImage(item) || "/placeholder.svg"}
-                      alt={item.nome}
-                      className="w-full h-48 object-cover"
-                      loading="lazy"
-                    />
-                    {cartQuantity > 0 && (
-                      <div className="absolute top-3 right-3 bg-gradient-to-r from-orange-500 to-red-500 text-white text-sm px-3 py-1 rounded-full font-medium shadow-lg">
-                        {cartQuantity}
-                      </div>
-                    )}
-                    <div className="absolute top-3 left-3">
-                      <span className="bg-gradient-to-r from-yellow-400 to-orange-400 text-white text-xs px-3 py-1 rounded-full font-medium shadow-lg">
-                        ⭐ Destaque
-                      </span>
-                    </div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
-                  </div>
-                  <div className="p-6">
-                    <h3 className="font-bold text-lg text-gray-900 mb-2 line-clamp-1">{item.nome}</h3>
-                    {item.descricao && <p className="text-sm text-gray-600 mb-4 line-clamp-2">{item.descricao}</p>}
-                    <div className="flex items-center justify-between">
-                      <span className="text-2xl font-bold text-orange-600">
-                        {(getItemPrice(item) || 0).toLocaleString("pt-BR", {
-                          style: "currency",
-                          currency: "BRL",
-                        })}
-                      </span>
-                      <Button
-                        size="lg"
-                        className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white shadow-lg rounded-full px-6"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          openCustomizeModal(item)
-                        }}
+            return (
+              <div key={categoria} ref={(el) => (categoryRefs.current[categoria] = el)} className="mb-12">
+                <h2 className="text-3xl font-bold text-gray-900 mb-8 flex items-center gap-3">
+                  <span className="w-2 h-8 bg-gradient-to-b from-orange-500 to-red-500 rounded-full"></span>
+                  {categoria}
+                </h2>
+                <div className="space-y-6">
+                  {categoryItems.map((item) => {
+                    const itemKey = getItemKey(item)
+                    const cartItem = cart[itemKey]
+                    const cartQuantity = cartItem?.quantity || 0
+
+                    return (
+                      <div
+                        key={itemKey}
+                        className="flex bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:scale-[1.02] border border-orange-100"
+                        onClick={() => handleProductClick(item)}
                       >
-                        <Plus className="h-5 w-5" />
-                      </Button>
-                    </div>
-                  </div>
+                        <div className="relative">
+                          <img
+                            src={getItemImage(item) || "/placeholder.svg"}
+                            alt={item.nome}
+                            className="w-36 h-36 object-cover flex-shrink-0"
+                            loading="lazy"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-transparent"></div>
+                        </div>
+                        <div className="flex-1 p-6 flex flex-col justify-between">
+                          <div>
+                            <h3 className="font-bold text-xl text-gray-900 mb-2">{item.nome}</h3>
+                            {item.descricao && (
+                              <p className="text-gray-600 mb-4 line-clamp-2 leading-relaxed">{item.descricao}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-2xl font-bold text-orange-600">
+                              {(getItemPrice(item) || 0).toLocaleString("pt-BR", {
+                                style: "currency",
+                                currency: "BRL",
+                              })}
+                            </span>
+                            {cartQuantity === 0 ? (
+                              <Button
+                                size="lg"
+                                className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white shadow-lg rounded-full px-6"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  openCustomizeModal(item)
+                                }}
+                              >
+                                <Plus className="h-5 w-5" />
+                              </Button>
+                            ) : (
+                              <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => removeFromCart(itemKey)}
+                                  className="border-orange-300 text-orange-600 hover:bg-orange-50 rounded-full w-10 h-10 p-0"
+                                >
+                                  <Minus className="h-4 w-4" />
+                                </Button>
+                                <span className="font-bold text-lg px-3 py-1 bg-orange-100 text-orange-800 rounded-full min-w-[3rem] text-center">
+                                  {cartQuantity}
+                                </span>
+                                <Button
+                                  size="sm"
+                                  onClick={() => openCustomizeModal(item)}
+                                  className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-full w-10 h-10 p-0"
+                                >
+                                  <Plus className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
-              )
-            })}
-          </div>
+              </div>
+            )
+          })}
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8">
-        {categoriasDisponiveis.slice(1).map((categoria) => {
-          if (categoriasPromocionais.includes(categoria)) return null
-
-          const categoryItems = getItemsByCategory(categoria)
-          if (categoryItems.length === 0) return null
-
-          return (
-            <div key={categoria} ref={(el) => (categoryRefs.current[categoria] = el)} className="mb-12">
-              <h2 className="text-3xl font-bold text-gray-900 mb-8 flex items-center gap-3">
-                <span className="w-2 h-8 bg-gradient-to-b from-orange-500 to-red-500 rounded-full"></span>
-                {categoria}
-              </h2>
-              <div className="space-y-6">
-                {categoryItems.map((item) => {
-                  const itemKey = getItemKey(item)
-                  const cartItem = cart[itemKey]
-                  const cartQuantity = cartItem?.quantity || 0
-
-                  return (
-                    <div
-                      key={itemKey}
-                      className="flex bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:scale-[1.02] border border-orange-100"
-                      onClick={() => handleProductClick(item)}
-                    >
-                      <div className="relative">
-                        <img
-                          src={getItemImage(item) || "/placeholder.svg"}
-                          alt={item.nome}
-                          className="w-36 h-36 object-cover flex-shrink-0"
-                          loading="lazy"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-transparent"></div>
-                      </div>
-                      <div className="flex-1 p-6 flex flex-col justify-between">
-                        <div>
-                          <h3 className="font-bold text-xl text-gray-900 mb-2">{item.nome}</h3>
-                          {item.descricao && (
-                            <p className="text-gray-600 mb-4 line-clamp-2 leading-relaxed">{item.descricao}</p>
-                          )}
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-2xl font-bold text-orange-600">
-                            {(getItemPrice(item) || 0).toLocaleString("pt-BR", {
-                              style: "currency",
-                              currency: "BRL",
-                            })}
-                          </span>
-                          {cartQuantity === 0 ? (
-                            <Button
-                              size="lg"
-                              className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white shadow-lg rounded-full px-6"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                openCustomizeModal(item)
-                              }}
-                            >
-                              <Plus className="h-5 w-5" />
-                            </Button>
-                          ) : (
-                            <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => removeFromCart(itemKey)}
-                                className="border-orange-300 text-orange-600 hover:bg-orange-50 rounded-full w-10 h-10 p-0"
-                              >
-                                <Minus className="h-4 w-4" />
-                              </Button>
-                              <span className="font-bold text-lg px-3 py-1 bg-orange-100 text-orange-800 rounded-full min-w-[3rem] text-center">
-                                {cartQuantity}
-                              </span>
-                              <Button
-                                size="sm"
-                                onClick={() => openCustomizeModal(item)}
-                                className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-full w-10 h-10 p-0"
-                              >
-                                <Plus className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
       <Dialog open={isCustomizeOpen} onOpenChange={setIsCustomizeOpen}>
-        <DialogContent className="modal-ifood max-w-[95vw] sm:max-w-2xl bg-popover p-0 max-h-[95vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-2xl h-[90vh] max-h-[90vh] p-0 overflow-hidden flex flex-col">
           <DialogHeader className="sr-only">
             <DialogTitle>Personalizar {selectedItem?.nome}</DialogTitle>
             <DialogDescription>
               Customize seu pedido adicionando ingredientes extras e personalizações
             </DialogDescription>
           </DialogHeader>
-          <div className="relative">
-            <div className="modal-image-container relative h-48 sm:h-64 overflow-hidden rounded-t-lg">
-              {selectedItem && (
-                <img
-                  src={getItemImage(selectedItem) || "/placeholder.svg"}
-                  alt={selectedItem.nome}
-                  className="w-full h-full object-cover"
-                  loading="eager"
-                />
-              )}
+
+          <div className="flex flex-col h-full">
+            <div className="relative flex-shrink-0">
+              <div className="h-48 sm:h-56 overflow-hidden">
+                {selectedItem && (
+                  <img
+                    src={getItemImage(selectedItem) || "/placeholder.svg"}
+                    alt={selectedItem.nome}
+                    className="w-full h-full object-cover"
+                    loading="eager"
+                  />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+              </div>
+
               <button
                 onClick={() => setIsCustomizeOpen(false)}
-                className="absolute top-2 right-2 sm:top-4 sm:right-4 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center text-gray-700 hover:text-primary shadow-lg hover:bg-white transition-all duration-200 z-10"
+                className="absolute top-4 right-4 w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center text-gray-700 hover:text-primary shadow-lg hover:bg-white transition-all duration-200 z-10"
               >
-                ×
+                <X className="h-5 w-5" />
               </button>
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
             </div>
 
-            <div className="p-4 sm:p-6 border-b border-border">
+            <div className="flex-shrink-0 p-4 border-b border-border">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="flex-1">
                   <h2 className="text-xl sm:text-2xl font-bold text-popover-foreground mb-2">{selectedItem?.nome}</h2>
@@ -1181,8 +1188,8 @@ export default function MenuClientesModule() {
                       })}
                   </p>
                 </div>
-                <div className="flex items-center gap-3 bg-muted/50 px-3 sm:px-4 py-2 rounded-full self-start sm:self-auto">
-                  <div className="w-6 h-6 sm:w-8 sm:h-8 bg-primary rounded-full flex items-center justify-center overflow-hidden">
+                <div className="flex items-center gap-3 bg-muted/50 px-3 py-2 rounded-full">
+                  <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center overflow-hidden">
                     {dadosEmpresa.logo_url ? (
                       <img
                         src={dadosEmpresa.logo_url || "/placeholder.svg"}
@@ -1190,13 +1197,13 @@ export default function MenuClientesModule() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <ChefHat className="h-3 w-3 sm:h-4 sm:w-4 text-primary-foreground" />
+                      <ChefHat className="h-3 w-3 text-primary-foreground" />
                     )}
                   </div>
                   <div className="text-sm">
-                    <p className="font-medium text-popover-foreground text-xs sm:text-sm">{dadosEmpresa.nome}</p>
+                    <p className="font-medium text-popover-foreground text-xs">{dadosEmpresa.nome}</p>
                     <div className="flex items-center gap-1 text-muted-foreground text-xs">
-                      <Star className="h-2.5 w-2.5 sm:h-3 sm:w-3 fill-yellow-400 text-yellow-400" />
+                      <Star className="h-2.5 w-2.5 fill-yellow-400 text-yellow-400" />
                       <span>4.8</span>
                       <span>•</span>
                       <span>0-10 min</span>
@@ -1206,7 +1213,7 @@ export default function MenuClientesModule() {
               </div>
             </div>
 
-            <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {(selectedItem?.type === "produto"
                 ? getAdicionaisParaProduto(selectedItem)
                 : selectedItem?.type === "combo"
@@ -1353,13 +1360,13 @@ export default function MenuClientesModule() {
               )}
 
               <div className="space-y-3">
-                <Label htmlFor="observacoes" className="text-popover-foreground font-medium text-sm sm:text-base">
+                <Label htmlFor="observacoes" className="text-popover-foreground font-medium">
                   Algum comentário?
                 </Label>
                 <Textarea
                   id="observacoes"
                   placeholder="Ex: tirar a cebola, maionese à parte etc."
-                  className="border-border focus:border-primary focus:ring-primary bg-input text-sm sm:text-base"
+                  className="border-border focus:border-primary focus:ring-primary bg-input"
                   rows={3}
                   value={modalComments}
                   onChange={(e) => setModalComments(e.target.value)}
@@ -1370,9 +1377,11 @@ export default function MenuClientesModule() {
               <div className="pt-2">
                 <button className="text-sm text-destructive hover:underline">Denunciar item</button>
               </div>
+            </div>
 
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-4 border-t border-border">
-                <div className="flex items-center justify-center sm:justify-start gap-3">
+            <div className="flex-shrink-0 p-4 border-t border-border bg-background">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
                   <Button
                     variant="outline"
                     size="sm"
@@ -1396,10 +1405,10 @@ export default function MenuClientesModule() {
 
                 <Button
                   onClick={confirmCustomization}
-                  className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-6 sm:px-8 py-3 text-base sm:text-lg font-medium shadow-lg rounded-full transition-all duration-200 hover:scale-105 w-full sm:w-auto"
+                  className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-6 py-3 font-medium shadow-lg rounded-full transition-all duration-200 flex-1 max-w-xs"
                   disabled={!selectedItem}
                 >
-                  <Plus className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
+                  <Plus className="h-4 w-4 mr-2" />
                   Adicionar •{" "}
                   {(getModalItemPrice() || 0).toLocaleString("pt-BR", {
                     style: "currency",
@@ -1413,307 +1422,321 @@ export default function MenuClientesModule() {
       </Dialog>
 
       {cartItemCount > 0 && (
-        <div className="fixed bottom-4 left-4 right-4 z-50">
-          <Dialog open={isCheckoutOpen} onOpenChange={setIsCheckoutOpen}>
-            <DialogTrigger asChild>
-              <Button
-                size="lg"
-                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-3 sm:py-4 text-base sm:text-lg font-medium shadow-lg rounded-full"
-              >
-                <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-                <span className="truncate">
-                  Ver carrinho • {cartItemCount} {cartItemCount === 1 ? "item" : "itens"} •{" "}
-                  {(cartTotal || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                </span>
-              </Button>
-            </DialogTrigger>
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-orange-200 shadow-lg">
+          <div className="container mx-auto px-4 py-3">
+            <Dialog open={isCheckoutOpen} onOpenChange={setIsCheckoutOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  size="lg"
+                  className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white py-4 text-lg font-medium shadow-lg rounded-full"
+                >
+                  <ShoppingCart className="h-5 w-5 mr-2" />
+                  <span className="truncate">
+                    Ver carrinho • {cartItemCount} {cartItemCount === 1 ? "item" : "itens"} •{" "}
+                    {(cartTotal || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                  </span>
+                </Button>
+              </DialogTrigger>
 
-            <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[95vh] overflow-y-auto bg-popover">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 text-popover-foreground text-lg sm:text-xl">
-                  <ShoppingCart className="h-5 w-5" />
-                  Finalizar Pedido
-                </DialogTitle>
-                <DialogDescription className="text-popover-foreground/70 text-sm sm:text-base">
-                  Revise seus itens e preencha os dados para finalizar seu pedido
-                </DialogDescription>
-              </DialogHeader>
+              <DialogContent className="w-[95vw] max-w-2xl h-[90vh] max-h-[90vh] overflow-hidden flex flex-col">
+                <DialogHeader className="flex-shrink-0 p-4 border-b">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <DialogTitle className="flex items-center gap-2 text-popover-foreground text-xl">
+                        <ShoppingCart className="h-5 w-5" />
+                        Finalizar Pedido
+                      </DialogTitle>
+                      <DialogDescription className="text-popover-foreground/70">
+                        Revise seus itens e preencha os dados para finalizar seu pedido
+                      </DialogDescription>
+                    </div>
+                    <button
+                      onClick={() => setIsCheckoutOpen(false)}
+                      className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-600 transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </DialogHeader>
 
-              <div className="space-y-4 sm:space-y-6">
-                <div className="space-y-3 sm:space-y-4">
-                  <h3 className="font-semibold text-base sm:text-lg text-popover-foreground">Resumo do Pedido</h3>
-                  <div className="space-y-2 sm:space-y-3">
-                    {Object.entries(cart).map(([cartKey, cartItem]) => {
-                      const originalItemId = cartItem.originalItemId || cartKey.split("|")[0]
-                      const item = allMenuItems.find((i) => `${i.type}-${i.id}` === originalItemId)
+                <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                  <div className="space-y-3 sm:space-y-4">
+                    <h3 className="font-semibold text-base sm:text-lg text-popover-foreground">Resumo do Pedido</h3>
+                    <div className="space-y-2 sm:space-y-3">
+                      {Object.entries(cart).map(([cartKey, cartItem]) => {
+                        const originalItemId = cartItem.originalItemId || cartKey.split("|")[0]
+                        const item = allMenuItems.find((i) => `${i.type}-${i.id}` === originalItemId)
 
-                      if (!item) return null
+                        if (!item) return null
 
-                      const itemPrice = getItemPrice(item)
-                      let totalItemPrice = itemPrice * cartItem.quantity
+                        const itemPrice = getItemPrice(item)
+                        let totalItemPrice = itemPrice * cartItem.quantity
 
-                      // Calcular preço dos adicionais
-                      if (cartItem.customizations?.added) {
-                        cartItem.customizations.added.forEach((adicionadoNome) => {
-                          const adicional = adicionais.find((a) => a.nome === adicionadoNome)
-                          if (adicional) {
-                            totalItemPrice += adicional.preco * cartItem.quantity
-                          }
-                        })
-                      }
+                        // Calcular preço dos adicionais
+                        if (cartItem.customizations?.added) {
+                          cartItem.customizations.added.forEach((adicionadoNome) => {
+                            const adicional = adicionais.find((a) => a.nome === adicionadoNome)
+                            if (adicional) {
+                              totalItemPrice += adicional.preco * cartItem.quantity
+                            }
+                          })
+                        }
 
-                      return (
-                        <div
-                          key={cartKey}
-                          className="flex items-start gap-3 p-3 sm:p-4 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
-                        >
-                          <div className="flex-shrink-0">
-                            <img
-                              src={getItemImage(item) || "/placeholder.svg?height=60&width=60&query=food"}
-                              alt={item.nome}
-                              className="w-12 h-12 sm:w-16 sm:h-16 object-cover rounded-lg border border-gray-200"
-                            />
-                          </div>
+                        return (
+                          <div
+                            key={cartKey}
+                            className="flex items-start gap-3 p-3 sm:p-4 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
+                          >
+                            <div className="flex-shrink-0">
+                              <img
+                                src={getItemImage(item) || "/placeholder.svg?height=60&width=60&query=food"}
+                                alt={item.nome}
+                                className="w-12 h-12 sm:w-16 sm:h-16 object-cover rounded-lg border border-gray-200"
+                              />
+                            </div>
 
-                          <div className="flex-1 min-w-0">
-                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-                              <div className="flex-1 min-w-0">
-                                <div className="font-semibold text-gray-900 text-sm sm:text-base truncate">
-                                  {cartItem.quantity}x {item.nome}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-semibold text-gray-900 text-sm sm:text-base truncate">
+                                    {cartItem.quantity}x {item.nome}
+                                  </div>
+
+                                  {cartItem.customizations?.removed && cartItem.customizations.removed.length > 0 && (
+                                    <div className="flex items-center gap-1 mt-1">
+                                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200 truncate max-w-full">
+                                        <svg
+                                          className="w-3 h-3 mr-1 flex-shrink-0"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          viewBox="0 0 24 24"
+                                        >
+                                          <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M20 12H4"
+                                          />
+                                        </svg>
+                                        <span className="truncate">
+                                          Retirar: {cartItem.customizations.removed.join(", ")}
+                                        </span>
+                                      </span>
+                                    </div>
+                                  )}
+
+                                  {cartItem.customizations?.added && cartItem.customizations.added.length > 0 && (
+                                    <div className="flex items-center gap-1 mt-1">
+                                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200 truncate max-w-full">
+                                        <svg
+                                          className="w-3 h-3 mr-1 flex-shrink-0"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          viewBox="0 0 24 24"
+                                        >
+                                          <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M12 4v16m8-8H4"
+                                          />
+                                        </svg>
+                                        <span className="truncate">
+                                          Adicionar: {cartItem.customizations.added.join(", ")}
+                                        </span>
+                                      </span>
+                                    </div>
+                                  )}
+
+                                  {cartItem.comments && (
+                                    <div className="flex items-center gap-1 mt-1">
+                                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 truncate max-w-full">
+                                        <svg
+                                          className="w-3 h-3 mr-1 flex-shrink-0"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          viewBox="0 0 24 24"
+                                        >
+                                          <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"
+                                          />
+                                        </svg>
+                                        <span className="truncate">{cartItem.comments}</span>
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
 
-                                {cartItem.customizations?.removed && cartItem.customizations.removed.length > 0 && (
-                                  <div className="flex items-center gap-1 mt-1">
-                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200 truncate max-w-full">
-                                      <svg
-                                        className="w-3 h-3 mr-1 flex-shrink-0"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                      >
-                                        <path
-                                          strokeLinecap="round"
-                                          strokeLinejoin="round"
-                                          strokeWidth={2}
-                                          d="M20 12H4"
-                                        />
-                                      </svg>
-                                      <span className="truncate">
-                                        Retirar: {cartItem.customizations.removed.join(", ")}
-                                      </span>
-                                    </span>
-                                  </div>
-                                )}
-
-                                {cartItem.customizations?.added && cartItem.customizations.added.length > 0 && (
-                                  <div className="flex items-center gap-1 mt-1">
-                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200 truncate max-w-full">
-                                      <svg
-                                        className="w-3 h-3 mr-1 flex-shrink-0"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                      >
-                                        <path
-                                          strokeLinecap="round"
-                                          strokeLinejoin="round"
-                                          strokeWidth={2}
-                                          d="M12 4v16m8-8H4"
-                                        />
-                                      </svg>
-                                      <span className="truncate">
-                                        Adicionar: {cartItem.customizations.added.join(", ")}
-                                      </span>
-                                    </span>
-                                  </div>
-                                )}
-
-                                {cartItem.comments && (
-                                  <div className="flex items-center gap-1 mt-1">
-                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 truncate max-w-full">
-                                      <svg
-                                        className="w-3 h-3 mr-1 flex-shrink-0"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                      >
-                                        <path
-                                          strokeLinecap="round"
-                                          strokeLinejoin="round"
-                                          strokeWidth={2}
-                                          d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"
-                                        />
-                                      </svg>
-                                      <span className="truncate">{cartItem.comments}</span>
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-
-                              <div className="text-right flex-shrink-0">
-                                <div className="font-bold text-base sm:text-lg text-gray-900">
-                                  {(totalItemPrice || 0).toLocaleString("pt-BR", {
-                                    style: "currency",
-                                    currency: "BRL",
-                                  })}
-                                </div>
-                                {cartItem.quantity > 1 && (
-                                  <div className="text-xs sm:text-sm text-gray-500">
-                                    {((totalItemPrice || 0) / cartItem.quantity).toLocaleString("pt-BR", {
+                                <div className="text-right flex-shrink-0">
+                                  <div className="font-bold text-base sm:text-lg text-gray-900">
+                                    {(totalItemPrice || 0).toLocaleString("pt-BR", {
                                       style: "currency",
                                       currency: "BRL",
-                                    })}{" "}
-                                    cada
+                                    })}
                                   </div>
-                                )}
+                                  {cartItem.quantity > 1 && (
+                                    <div className="text-xs sm:text-sm text-gray-500">
+                                      {((totalItemPrice || 0) / cartItem.quantity).toLocaleString("pt-BR", {
+                                        style: "currency",
+                                        currency: "BRL",
+                                      })}{" "}
+                                      cada
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      )
-                    })}
+                        )
+                      })}
+                    </div>
+
+                    <div className="bg-red-500 text-white p-3 sm:p-4 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">Total do Pedido</span>
+                        <Button variant="ghost" size="sm" className="text-white hover:bg-red-600 p-1">
+                          <Copy className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      <div className="text-xl sm:text-2xl font-bold">
+                        R$ {((getCartTotal() || 0) + (calcularFrete(getCartTotal() || 0) || 0)).toFixed(2)}
+                      </div>
+                      <div className="text-xs mt-1 opacity-90">
+                        Produtos: R$ {(getCartTotal() || 0).toFixed(2)}
+                        {(calcularFrete(getCartTotal() || 0) || 0) > 0 && (
+                          <> + Frete: R$ {(calcularFrete(getCartTotal() || 0) || 0).toFixed(2)}</>
+                        )}
+                        {(calcularFrete(getCartTotal() || 0) || 0) === 0 && !configuracaoFrete.freteGratis && (
+                          <> • Frete Grátis!</>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="bg-red-500 text-white p-3 sm:p-4 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Total do Pedido</span>
-                      <Button variant="ghost" size="sm" className="text-white hover:bg-red-600 p-1">
-                        <Copy className="w-4 h-4" />
-                      </Button>
-                    </div>
-                    <div className="text-xl sm:text-2xl font-bold">
-                      R$ {((getCartTotal() || 0) + (calcularFrete(getCartTotal() || 0) || 0)).toFixed(2)}
-                    </div>
-                    <div className="text-xs mt-1 opacity-90">
-                      Produtos: R$ {(getCartTotal() || 0).toFixed(2)}
-                      {(calcularFrete(getCartTotal() || 0) || 0) > 0 && (
-                        <> + Frete: R$ {(calcularFrete(getCartTotal() || 0) || 0).toFixed(2)}</>
-                      )}
-                      {(calcularFrete(getCartTotal() || 0) || 0) === 0 && !configuracaoFrete.freteGratis && (
-                        <> • Frete Grátis!</>
-                      )}
+                  <div className="space-y-3 sm:space-y-4">
+                    <h3 className="font-semibold text-base sm:text-lg flex items-center gap-2 text-popover-foreground">
+                      <User className="h-4 w-4 sm:h-5 sm:w-5" />
+                      Dados do Cliente
+                    </h3>
+                    <div className="grid grid-cols-1 gap-3 sm:gap-4">
+                      <div>
+                        <Label htmlFor="nome" className="text-popover-foreground text-sm sm:text-base">
+                          Nome Completo *
+                        </Label>
+                        <Input
+                          id="nome"
+                          value={customerData.nome}
+                          onChange={(e) => setCustomerData((prev) => ({ ...prev, nome: e.target.value }))}
+                          placeholder="Seu nome completo"
+                          className="border-border focus:border-primary focus:ring-primary bg-input text-sm sm:text-base"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="telefone" className="text-popover-foreground text-sm sm:text-base">
+                          Telefone *
+                        </Label>
+                        <Input
+                          id="telefone"
+                          value={customerData.telefone}
+                          onChange={(e) => setCustomerData((prev) => ({ ...prev, telefone: e.target.value }))}
+                          placeholder="(11) 99999-9999"
+                          className="border-border focus:border-primary focus:ring-primary bg-input text-sm sm:text-base"
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="space-y-3 sm:space-y-4">
-                  <h3 className="font-semibold text-base sm:text-lg flex items-center gap-2 text-popover-foreground">
-                    <User className="h-4 w-4 sm:h-5 sm:w-5" />
-                    Dados do Cliente
-                  </h3>
-                  <div className="grid grid-cols-1 gap-3 sm:gap-4">
+                  <div className="space-y-3 sm:space-y-4">
+                    <h3 className="font-semibold text-base sm:text-lg flex items-center gap-2 text-popover-foreground">
+                      <Home className="h-4 w-4 sm:h-5 sm:w-5" />
+                      Endereço de Entrega
+                    </h3>
                     <div>
-                      <Label htmlFor="nome" className="text-popover-foreground text-sm sm:text-base">
-                        Nome Completo *
+                      <Label htmlFor="endereco" className="text-popover-foreground text-sm sm:text-base">
+                        Endereço Completo *
                       </Label>
-                      <Input
-                        id="nome"
-                        value={customerData.nome}
-                        onChange={(e) => setCustomerData((prev) => ({ ...prev, nome: e.target.value }))}
-                        placeholder="Seu nome completo"
+                      <Textarea
+                        id="endereco"
+                        value={customerData.endereco}
+                        onChange={(e) => setCustomerData((prev) => ({ ...prev, endereco: e.target.value }))}
+                        placeholder="Rua, número, bairro, cidade"
+                        rows={3}
                         className="border-border focus:border-primary focus:ring-primary bg-input text-sm sm:text-base"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="telefone" className="text-popover-foreground text-sm sm:text-base">
-                        Telefone *
+                      <Label htmlFor="complemento" className="text-popover-foreground text-sm sm:text-base">
+                        Complemento
                       </Label>
                       <Input
-                        id="telefone"
-                        value={customerData.telefone}
-                        onChange={(e) => setCustomerData((prev) => ({ ...prev, telefone: e.target.value }))}
-                        placeholder="(11) 99999-9999"
+                        id="complemento"
+                        value={customerData.complemento}
+                        onChange={(e) => setCustomerData((prev) => ({ ...prev, complemento: e.target.value }))}
+                        placeholder="Apartamento, bloco, referência..."
                         className="border-border focus:border-primary focus:ring-primary bg-input text-sm sm:text-base"
                       />
                     </div>
                   </div>
-                </div>
 
-                <div className="space-y-3 sm:space-y-4">
-                  <h3 className="font-semibold text-base sm:text-lg flex items-center gap-2 text-popover-foreground">
-                    <Home className="h-4 w-4 sm:h-5 sm:w-5" />
-                    Endereço de Entrega
-                  </h3>
-                  <div>
-                    <Label htmlFor="endereco" className="text-popover-foreground text-sm sm:text-base">
-                      Endereço Completo *
-                    </Label>
+                  <div className="space-y-3 sm:space-y-4">
+                    <h3 className="font-semibold text-base sm:text-lg flex items-center gap-2 text-popover-foreground">
+                      <CreditCard className="h-4 w-4 sm:h-5 sm:w-5" />
+                      Forma de Pagamento
+                    </h3>
+                    <Select
+                      value={customerData.formaPagamento}
+                      onValueChange={(value) => setCustomerData((prev) => ({ ...prev, formaPagamento: value }))}
+                    >
+                      <SelectTrigger className="border-border focus:border-primary focus:ring-primary bg-input text-sm sm:text-base">
+                        <SelectValue placeholder="Selecione a forma de pagamento" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pix">PIX</SelectItem>
+                        <SelectItem value="cartao-credito">Cartão de Crédito</SelectItem>
+                        <SelectItem value="cartao-debito">Cartão de Débito</SelectItem>
+                        <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                        <SelectItem value="mercadopago">Mercado Pago</SelectItem>
+                        <SelectItem value="pagamento-na-entrega">Pagamento na Entrega</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-3 sm:space-y-4">
+                    <h3 className="font-semibold text-base sm:text-lg text-popover-foreground">Observações</h3>
                     <Textarea
-                      id="endereco"
-                      value={customerData.endereco}
-                      onChange={(e) => setCustomerData((prev) => ({ ...prev, endereco: e.target.value }))}
-                      placeholder="Rua, número, bairro, cidade"
+                      value={customerData.observacoes}
+                      onChange={(e) => setCustomerData((prev) => ({ ...prev, observacoes: e.target.value }))}
+                      placeholder="Alguma observação especial para seu pedido?"
                       rows={3}
                       className="border-border focus:border-primary focus:ring-primary bg-input text-sm sm:text-base"
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="complemento" className="text-popover-foreground text-sm sm:text-base">
-                      Complemento
-                    </Label>
-                    <Input
-                      id="complemento"
-                      value={customerData.complemento}
-                      onChange={(e) => setCustomerData((prev) => ({ ...prev, complemento: e.target.value }))}
-                      placeholder="Apartamento, bloco, referência..."
-                      className="border-border focus:border-primary focus:ring-primary bg-input text-sm sm:text-base"
-                    />
+
+                  <div className="flex-shrink-0 p-4 border-t bg-background">
+                    <div className="flex gap-3">
+                      <Button
+                        variant="outline"
+                        onClick={() => setIsCheckoutOpen(false)}
+                        className="flex-1 border-border text-popover-foreground hover:bg-muted py-3"
+                      >
+                        Continuar Comprando
+                      </Button>
+                      <Button
+                        onClick={finalizarPedido}
+                        className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white py-3"
+                      >
+                        <CreditCard className="h-4 w-4 mr-2" />
+                        Finalizar Pedido
+                      </Button>
+                    </div>
                   </div>
                 </div>
-
-                <div className="space-y-3 sm:space-y-4">
-                  <h3 className="font-semibold text-base sm:text-lg flex items-center gap-2 text-popover-foreground">
-                    <CreditCard className="h-4 w-4 sm:h-5 sm:w-5" />
-                    Forma de Pagamento
-                  </h3>
-                  <Select
-                    value={customerData.formaPagamento}
-                    onValueChange={(value) => setCustomerData((prev) => ({ ...prev, formaPagamento: value }))}
-                  >
-                    <SelectTrigger className="border-border focus:border-primary focus:ring-primary bg-input text-sm sm:text-base">
-                      <SelectValue placeholder="Selecione a forma de pagamento" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pix">PIX</SelectItem>
-                      <SelectItem value="cartao-credito">Cartão de Crédito</SelectItem>
-                      <SelectItem value="cartao-debito">Cartão de Débito</SelectItem>
-                      <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                      <SelectItem value="mercadopago">Mercado Pago</SelectItem>
-                      <SelectItem value="pagamento-na-entrega">Pagamento na Entrega</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-3 sm:space-y-4">
-                  <h3 className="font-semibold text-base sm:text-lg text-popover-foreground">Observações</h3>
-                  <Textarea
-                    value={customerData.observacoes}
-                    onChange={(e) => setCustomerData((prev) => ({ ...prev, observacoes: e.target.value }))}
-                    placeholder="Alguma observação especial para seu pedido?"
-                    rows={3}
-                    className="border-border focus:border-primary focus:ring-primary bg-input text-sm sm:text-base"
-                  />
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-3 pt-4">
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsCheckoutOpen(false)}
-                    className="flex-1 border-border text-popover-foreground hover:bg-muted text-sm sm:text-base py-2 sm:py-3"
-                  >
-                    Continuar Comprando
-                  </Button>
-                  <Button
-                    onClick={finalizarPedido}
-                    className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground text-sm sm:text-base py-2 sm:py-3"
-                  >
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    Finalizar Pedido
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
       )}
 
