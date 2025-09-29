@@ -872,13 +872,13 @@ export default function MenuClientesModule() {
       </div>
 
       <div className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-orange-100 shadow-sm">
-        <div className="container mx-auto px-4">
-          <div className="flex gap-2 py-3 overflow-x-auto scrollbar-hide">
+        <div className="container mx-auto px-2 sm:px-4">
+          <div className="flex gap-1 sm:gap-2 py-2 sm:py-3 overflow-x-auto scrollbar-hide">
             {categoriasDisponiveis.map((categoria) => (
               <button
                 key={categoria}
                 onClick={() => scrollToCategory(categoria)}
-                className={`flex-shrink-0 px-4 py-2 rounded-full font-medium transition-all duration-300 text-sm ${
+                className={`flex-shrink-0 px-3 sm:px-4 py-2 rounded-full font-medium transition-all duration-300 text-xs sm:text-sm whitespace-nowrap ${
                   selectedCategory === categoria
                     ? "bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg"
                     : "bg-orange-100 text-orange-700 hover:bg-orange-200"
@@ -1146,7 +1146,7 @@ export default function MenuClientesModule() {
       </div>
 
       <Dialog open={isCustomizeOpen} onOpenChange={setIsCustomizeOpen}>
-        <DialogContent className="w-[95vw] max-w-2xl h-[90vh] max-h-[90vh] p-0 overflow-hidden flex flex-col">
+        <DialogContent className="w-[100vw] sm:w-[95vw] max-w-2xl h-[100vh] sm:h-[95vh] max-h-[100vh] sm:max-h-[95vh] p-0 overflow-hidden flex flex-col m-0 sm:m-4 rounded-none sm:rounded-lg">
           <DialogHeader className="sr-only">
             <DialogTitle>Personalizar {selectedItem?.nome}</DialogTitle>
             <DialogDescription>
@@ -1156,7 +1156,7 @@ export default function MenuClientesModule() {
 
           <div className="flex flex-col h-full">
             <div className="relative flex-shrink-0">
-              <div className="h-48 sm:h-56 overflow-hidden">
+              <div className="h-32 sm:h-48 md:h-56 overflow-hidden">
                 {selectedItem && (
                   <img
                     src={getItemImage(selectedItem) || "/placeholder.svg"}
@@ -1170,17 +1170,19 @@ export default function MenuClientesModule() {
 
               <button
                 onClick={() => setIsCustomizeOpen(false)}
-                className="absolute top-4 right-4 w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center text-gray-700 hover:text-primary shadow-lg hover:bg-white transition-all duration-200 z-10"
+                className="absolute top-2 sm:top-4 right-2 sm:right-4 w-8 h-8 sm:w-10 sm:h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center text-gray-700 hover:text-primary shadow-lg hover:bg-white transition-all duration-200 z-10"
               >
-                <X className="h-5 w-5" />
+                <X className="h-4 w-4 sm:h-5 sm:w-5" />
               </button>
             </div>
 
-            <div className="flex-shrink-0 p-4 border-b border-border">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex-shrink-0 p-3 sm:p-4 border-b border-border">
+              <div className="flex flex-col gap-3">
                 <div className="flex-1">
-                  <h2 className="text-xl sm:text-2xl font-bold text-popover-foreground mb-2">{selectedItem?.nome}</h2>
-                  <p className="text-lg font-semibold text-primary">
+                  <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-popover-foreground mb-1 sm:mb-2 line-clamp-2">
+                    {selectedItem?.nome}
+                  </h2>
+                  <p className="text-base sm:text-lg font-semibold text-primary">
                     {selectedItem &&
                       getItemPrice(selectedItem).toLocaleString("pt-BR", {
                         style: "currency",
@@ -1188,8 +1190,8 @@ export default function MenuClientesModule() {
                       })}
                   </p>
                 </div>
-                <div className="flex items-center gap-3 bg-muted/50 px-3 py-2 rounded-full">
-                  <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center overflow-hidden">
+                <div className="flex items-center gap-2 bg-muted/50 px-2 sm:px-3 py-1.5 sm:py-2 rounded-full self-start">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 bg-primary rounded-full flex items-center justify-center overflow-hidden">
                     {dadosEmpresa.logo_url ? (
                       <img
                         src={dadosEmpresa.logo_url || "/placeholder.svg"}
@@ -1197,13 +1199,13 @@ export default function MenuClientesModule() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <ChefHat className="h-3 w-3 text-primary-foreground" />
+                      <ChefHat className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-primary-foreground" />
                     )}
                   </div>
-                  <div className="text-sm">
-                    <p className="font-medium text-popover-foreground text-xs">{dadosEmpresa.nome}</p>
-                    <div className="flex items-center gap-1 text-muted-foreground text-xs">
-                      <Star className="h-2.5 w-2.5 fill-yellow-400 text-yellow-400" />
+                  <div className="text-xs sm:text-sm">
+                    <p className="font-medium text-popover-foreground">{dadosEmpresa.nome}</p>
+                    <div className="flex items-center gap-1 text-muted-foreground">
+                      <Star className="h-2 w-2 sm:h-2.5 sm:w-2.5 fill-yellow-400 text-yellow-400" />
                       <span>4.8</span>
                       <span>•</span>
                       <span>0-10 min</span>
@@ -1213,36 +1215,36 @@ export default function MenuClientesModule() {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
+              {/* Adicionais section */}
               {(selectedItem?.type === "produto"
                 ? getAdicionaisParaProduto(selectedItem)
                 : selectedItem?.type === "combo"
                   ? getAdicionaisParaCombo(selectedItem)
                   : []
               ).length > 0 && (
-                <div className="space-y-3 sm:space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    <h3 className="text-base sm:text-lg font-semibold text-popover-foreground">
+                <div className="space-y-2 sm:space-y-3">
+                  <div className="flex flex-col gap-1 sm:gap-2">
+                    <h3 className="text-sm sm:text-base md:text-lg font-semibold text-popover-foreground">
                       Personalize seu Pedido
                     </h3>
-                    <span className="text-sm text-muted-foreground">Adicione extras</span>
+                    <span className="text-xs sm:text-sm text-muted-foreground">Adicione extras</span>
                   </div>
 
-                  <div className="space-y-2 sm:space-y-3">
+                  <div className="space-y-2">
                     {(selectedItem?.type === "produto"
                       ? getAdicionaisParaProduto(selectedItem)
                       : getAdicionaisParaCombo(selectedItem)
                     ).map((adicional) => (
                       <div
                         key={adicional.id}
-                        className="flex items-center justify-between p-3 border border-border rounded-lg"
+                        className="flex items-center justify-between p-2 sm:p-3 border border-border rounded-lg"
                       >
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                           <Checkbox
                             id={`add-${adicional.id}`}
                             checked={addedIngredients.includes(adicional.nome)}
                             onCheckedChange={(checked) => {
-                              console.log("[v0] Adicional alterado:", adicional.nome, checked)
                               if (checked) {
                                 setAddedIngredients([...addedIngredients, adicional.nome])
                               } else {
@@ -1251,12 +1253,12 @@ export default function MenuClientesModule() {
                             }}
                             className="border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary flex-shrink-0"
                           />
-                          <span className="text-popover-foreground text-sm sm:text-base truncate">
+                          <span className="text-popover-foreground text-xs sm:text-sm md:text-base truncate">
                             {adicional.nome}
                           </span>
                         </div>
-                        <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                          <span className="text-primary font-medium text-sm sm:text-base">
+                        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0 ml-2">
+                          <span className="text-primary font-medium text-xs sm:text-sm md:text-base">
                             + {(adicional.preco || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                           </span>
                         </div>
@@ -1266,33 +1268,35 @@ export default function MenuClientesModule() {
                 </div>
               )}
 
+              {/* Personalizações section */}
               {(selectedItem?.type === "produto"
                 ? getPersonalizacoesParaProduto(selectedItem)
                 : selectedItem?.type === "combo"
                   ? getPersonalizacoesParaCombo(selectedItem)
                   : []
               ).length > 0 && (
-                <div className="space-y-3 sm:space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    <h3 className="text-base sm:text-lg font-semibold text-popover-foreground">Personalizações</h3>
-                    <span className="text-sm text-muted-foreground">Customize seu pedido</span>
+                <div className="space-y-2 sm:space-y-3">
+                  <div className="flex flex-col gap-1 sm:gap-2">
+                    <h3 className="text-sm sm:text-base md:text-lg font-semibold text-popover-foreground">
+                      Personalizações
+                    </h3>
+                    <span className="text-xs sm:text-sm text-muted-foreground">Customize seu pedido</span>
                   </div>
 
-                  <div className="space-y-2 sm:space-y-3">
+                  <div className="space-y-2">
                     {(selectedItem?.type === "produto"
                       ? getPersonalizacoesParaProduto(selectedItem)
                       : getPersonalizacoesParaCombo(selectedItem)
                     ).map((personalizacao) => (
                       <div
                         key={personalizacao.id}
-                        className="flex items-center justify-between p-3 border border-border rounded-lg"
+                        className="flex items-center justify-between p-2 sm:p-3 border border-border rounded-lg"
                       >
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                           <Checkbox
                             id={`custom-${personalizacao.id}`}
                             checked={selectedPersonalizacoes.includes(personalizacao.nome)}
                             onCheckedChange={(checked) => {
-                              console.log("[v0] Personalização alterada:", personalizacao.nome, checked)
                               if (checked) {
                                 setSelectedPersonalizacoes([...selectedPersonalizacoes, personalizacao.nome])
                               } else {
@@ -1304,7 +1308,7 @@ export default function MenuClientesModule() {
                             className="border-border data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500 flex-shrink-0"
                           />
                           <div className="flex flex-col min-w-0 flex-1">
-                            <span className="text-popover-foreground text-sm sm:text-base truncate">
+                            <span className="text-popover-foreground text-xs sm:text-sm md:text-base truncate">
                               {personalizacao.nome}
                             </span>
                             {personalizacao.descricao && (
@@ -1312,7 +1316,7 @@ export default function MenuClientesModule() {
                             )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0 ml-2">
                           <Badge
                             variant={personalizacao.tipo === "remover" ? "destructive" : "secondary"}
                             className="text-xs"
@@ -1326,48 +1330,16 @@ export default function MenuClientesModule() {
                 </div>
               )}
 
-              {selectedItem && selectedItem.type === "produto" && getProductIngredients(selectedItem).length > 0 && (
-                <div className="space-y-3 sm:space-y-4">
-                  <h3 className="text-base sm:text-lg font-semibold text-popover-foreground">Remover Ingredientes</h3>
-                  <div className="space-y-2 sm:space-y-3">
-                    {getProductIngredients(selectedItem).map((ingrediente: string) => (
-                      <div
-                        key={ingrediente}
-                        className="flex items-center justify-between p-3 border border-border rounded-lg"
-                      >
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <Checkbox
-                            id={`remove-${ingrediente}`}
-                            checked={removedIngredients.includes(ingrediente)}
-                            onCheckedChange={(checked) => {
-                              console.log("[v0] Ingrediente para remover alterado:", ingrediente, checked)
-                              if (checked) {
-                                setRemovedIngredients([...removedIngredients, ingrediente])
-                              } else {
-                                setRemovedIngredients(removedIngredients.filter((i) => i !== ingrediente))
-                              }
-                            }}
-                            className="border-border data-[state=checked]:bg-destructive data-[state=checked]:border-destructive flex-shrink-0"
-                          />
-                          <span className="text-popover-foreground text-sm sm:text-base truncate">
-                            Sem {ingrediente}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-3">
-                <Label htmlFor="observacoes" className="text-popover-foreground font-medium">
+              {/* Comments section */}
+              <div className="space-y-2 sm:space-y-3">
+                <Label htmlFor="observacoes" className="text-popover-foreground font-medium text-sm sm:text-base">
                   Algum comentário?
                 </Label>
                 <Textarea
                   id="observacoes"
                   placeholder="Ex: tirar a cebola, maionese à parte etc."
-                  className="border-border focus:border-primary focus:ring-primary bg-input"
-                  rows={3}
+                  className="border-border focus:border-primary focus:ring-primary bg-input text-sm sm:text-base"
+                  rows={2}
                   value={modalComments}
                   onChange={(e) => setModalComments(e.target.value)}
                 />
@@ -1375,40 +1347,40 @@ export default function MenuClientesModule() {
               </div>
 
               <div className="pt-2">
-                <button className="text-sm text-destructive hover:underline">Denunciar item</button>
+                <button className="text-xs sm:text-sm text-destructive hover:underline">Denunciar item</button>
               </div>
             </div>
 
-            <div className="flex-shrink-0 p-4 border-t border-border bg-background">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
+            <div className="flex-shrink-0 p-3 sm:p-4 border-t border-border bg-background">
+              <div className="flex items-center justify-between gap-3 sm:gap-4">
+                <div className="flex items-center gap-2 sm:gap-3">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="border-border bg-transparent hover:bg-muted w-10 h-10 p-0"
+                    className="border-border bg-transparent hover:bg-muted w-8 h-8 sm:w-10 sm:h-10 p-0"
                     onClick={() => setModalQuantity(Math.max(1, modalQuantity - 1))}
                     disabled={modalQuantity <= 1}
                   >
-                    <Minus className="h-4 w-4" />
+                    <Minus className="h-3 w-3 sm:h-4 sm:w-4" />
                   </Button>
-                  <span className="font-medium text-lg px-4 py-2 bg-muted rounded-lg min-w-[3rem] text-center">
+                  <span className="font-medium text-base sm:text-lg px-2 sm:px-4 py-1 sm:py-2 bg-muted rounded-lg min-w-[2.5rem] sm:min-w-[3rem] text-center">
                     {modalQuantity}
                   </span>
                   <Button
                     size="sm"
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground w-10 h-10 p-0"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground w-8 h-8 sm:w-10 sm:h-10 p-0"
                     onClick={() => setModalQuantity(modalQuantity + 1)}
                   >
-                    <Plus className="h-4 w-4" />
+                    <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
                   </Button>
                 </div>
 
                 <Button
                   onClick={confirmCustomization}
-                  className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-6 py-3 font-medium shadow-lg rounded-full transition-all duration-200 flex-1 max-w-xs"
+                  className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-4 sm:px-6 py-2 sm:py-3 font-medium shadow-lg rounded-full transition-all duration-200 flex-1 max-w-xs text-sm sm:text-base"
                   disabled={!selectedItem}
                 >
-                  <Plus className="h-4 w-4 mr-2" />
+                  <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                   Adicionar •{" "}
                   {(getModalItemPrice() || 0).toLocaleString("pt-BR", {
                     style: "currency",
@@ -1423,46 +1395,50 @@ export default function MenuClientesModule() {
 
       {cartItemCount > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-orange-200 shadow-lg">
-          <div className="container mx-auto px-4 py-3">
+          <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-3">
             <Dialog open={isCheckoutOpen} onOpenChange={setIsCheckoutOpen}>
               <DialogTrigger asChild>
                 <Button
                   size="lg"
-                  className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white py-4 text-lg font-medium shadow-lg rounded-full"
+                  className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white py-3 sm:py-4 text-sm sm:text-lg font-medium shadow-lg rounded-full"
                 >
-                  <ShoppingCart className="h-5 w-5 mr-2" />
+                  <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
                   <span className="truncate">
-                    Ver carrinho • {cartItemCount} {cartItemCount === 1 ? "item" : "itens"} •{" "}
+                    <span className="hidden sm:inline">Ver carrinho • </span>
+                    {cartItemCount} {cartItemCount === 1 ? "item" : "itens"} •{" "}
                     {(cartTotal || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                   </span>
                 </Button>
               </DialogTrigger>
 
-              <DialogContent className="w-[95vw] max-w-2xl h-[90vh] max-h-[90vh] overflow-hidden flex flex-col">
-                <DialogHeader className="flex-shrink-0 p-4 border-b">
+              <DialogContent className="w-[100vw] sm:w-[95vw] max-w-2xl h-[100vh] sm:h-[95vh] max-h-[100vh] sm:max-h-[95vh] overflow-hidden flex flex-col m-0 sm:m-4 rounded-none sm:rounded-lg">
+                <DialogHeader className="flex-shrink-0 p-3 sm:p-4 border-b">
                   <div className="flex items-center justify-between">
                     <div>
-                      <DialogTitle className="flex items-center gap-2 text-popover-foreground text-xl">
-                        <ShoppingCart className="h-5 w-5" />
+                      <DialogTitle className="flex items-center gap-2 text-popover-foreground text-lg sm:text-xl">
+                        <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" />
                         Finalizar Pedido
                       </DialogTitle>
-                      <DialogDescription className="text-popover-foreground/70">
+                      <DialogDescription className="text-popover-foreground/70 text-sm">
                         Revise seus itens e preencha os dados para finalizar seu pedido
                       </DialogDescription>
                     </div>
                     <button
                       onClick={() => setIsCheckoutOpen(false)}
-                      className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-600 transition-colors"
+                      className="w-7 h-7 sm:w-8 sm:h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-600 transition-colors"
                     >
-                      <X className="h-4 w-4" />
+                      <X className="h-3 w-3 sm:h-4 sm:w-4" />
                     </button>
                   </div>
                 </DialogHeader>
 
-                <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                  <div className="space-y-3 sm:space-y-4">
-                    <h3 className="font-semibold text-base sm:text-lg text-popover-foreground">Resumo do Pedido</h3>
-                    <div className="space-y-2 sm:space-y-3">
+                <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4 sm:space-y-6">
+                  {/* Order summary */}
+                  <div className="space-y-2 sm:space-y-3">
+                    <h3 className="font-semibold text-sm sm:text-base md:text-lg text-popover-foreground">
+                      Resumo do Pedido
+                    </h3>
+                    <div className="space-y-2">
                       {Object.entries(cart).map(([cartKey, cartItem]) => {
                         const originalItemId = cartItem.originalItemId || cartKey.split("|")[0]
                         const item = allMenuItems.find((i) => `${i.type}-${i.id}` === originalItemId)
@@ -1472,7 +1448,6 @@ export default function MenuClientesModule() {
                         const itemPrice = getItemPrice(item)
                         let totalItemPrice = itemPrice * cartItem.quantity
 
-                        // Calcular preço dos adicionais
                         if (cartItem.customizations?.added) {
                           cartItem.customizations.added.forEach((adicionadoNome) => {
                             const adicional = adicionais.find((a) => a.nome === adicionadoNome)
@@ -1485,28 +1460,28 @@ export default function MenuClientesModule() {
                         return (
                           <div
                             key={cartKey}
-                            className="flex items-start gap-3 p-3 sm:p-4 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
+                            className="flex items-start gap-2 sm:gap-3 p-2 sm:p-3 md:p-4 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
                           >
                             <div className="flex-shrink-0">
                               <img
                                 src={getItemImage(item) || "/placeholder.svg?height=60&width=60&query=food"}
                                 alt={item.nome}
-                                className="w-12 h-12 sm:w-16 sm:h-16 object-cover rounded-lg border border-gray-200"
+                                className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 object-cover rounded-lg border border-gray-200"
                               />
                             </div>
 
                             <div className="flex-1 min-w-0">
-                              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                              <div className="flex flex-col gap-1 sm:gap-2">
                                 <div className="flex-1 min-w-0">
-                                  <div className="font-semibold text-gray-900 text-sm sm:text-base truncate">
+                                  <div className="font-semibold text-gray-900 text-xs sm:text-sm md:text-base truncate">
                                     {cartItem.quantity}x {item.nome}
                                   </div>
 
                                   {cartItem.customizations?.removed && cartItem.customizations.removed.length > 0 && (
                                     <div className="flex items-center gap-1 mt-1">
-                                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200 truncate max-w-full">
+                                      <span className="inline-flex items-center px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200 truncate max-w-full">
                                         <svg
-                                          className="w-3 h-3 mr-1 flex-shrink-0"
+                                          className="w-2 h-2 sm:w-3 sm:h-3 mr-1 flex-shrink-0"
                                           fill="none"
                                           stroke="currentColor"
                                           viewBox="0 0 24 24"
@@ -1527,9 +1502,9 @@ export default function MenuClientesModule() {
 
                                   {cartItem.customizations?.added && cartItem.customizations.added.length > 0 && (
                                     <div className="flex items-center gap-1 mt-1">
-                                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200 truncate max-w-full">
+                                      <span className="inline-flex items-center px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200 truncate max-w-full">
                                         <svg
-                                          className="w-3 h-3 mr-1 flex-shrink-0"
+                                          className="w-2 h-2 sm:w-3 sm:h-3 mr-1 flex-shrink-0"
                                           fill="none"
                                           stroke="currentColor"
                                           viewBox="0 0 24 24"
@@ -1550,9 +1525,9 @@ export default function MenuClientesModule() {
 
                                   {cartItem.comments && (
                                     <div className="flex items-center gap-1 mt-1">
-                                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 truncate max-w-full">
+                                      <span className="inline-flex items-center px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 truncate max-w-full">
                                         <svg
-                                          className="w-3 h-3 mr-1 flex-shrink-0"
+                                          className="w-2 h-2 sm:w-3 sm:h-3 mr-1 flex-shrink-0"
                                           fill="none"
                                           stroke="currentColor"
                                           viewBox="0 0 24 24"
@@ -1571,14 +1546,14 @@ export default function MenuClientesModule() {
                                 </div>
 
                                 <div className="text-right flex-shrink-0">
-                                  <div className="font-bold text-base sm:text-lg text-gray-900">
+                                  <div className="font-bold text-sm sm:text-base md:text-lg text-gray-900">
                                     {(totalItemPrice || 0).toLocaleString("pt-BR", {
                                       style: "currency",
                                       currency: "BRL",
                                     })}
                                   </div>
                                   {cartItem.quantity > 1 && (
-                                    <div className="text-xs sm:text-sm text-gray-500">
+                                    <div className="text-xs text-gray-500">
                                       {((totalItemPrice || 0) / cartItem.quantity).toLocaleString("pt-BR", {
                                         style: "currency",
                                         currency: "BRL",
@@ -1594,14 +1569,15 @@ export default function MenuClientesModule() {
                       })}
                     </div>
 
+                    {/* Total section */}
                     <div className="bg-red-500 text-white p-3 sm:p-4 rounded-lg">
                       <div className="flex items-center justify-between">
                         <span className="text-sm">Total do Pedido</span>
                         <Button variant="ghost" size="sm" className="text-white hover:bg-red-600 p-1">
-                          <Copy className="w-4 h-4" />
+                          <Copy className="w-3 h-3 sm:w-4 sm:h-4" />
                         </Button>
                       </div>
-                      <div className="text-xl sm:text-2xl font-bold">
+                      <div className="text-lg sm:text-xl md:text-2xl font-bold">
                         R$ {((getCartTotal() || 0) + (calcularFrete(getCartTotal() || 0) || 0)).toFixed(2)}
                       </div>
                       <div className="text-xs mt-1 opacity-90">
@@ -1616,14 +1592,15 @@ export default function MenuClientesModule() {
                     </div>
                   </div>
 
-                  <div className="space-y-3 sm:space-y-4">
-                    <h3 className="font-semibold text-base sm:text-lg flex items-center gap-2 text-popover-foreground">
-                      <User className="h-4 w-4 sm:h-5 sm:w-5" />
+                  {/* Customer data section */}
+                  <div className="space-y-2 sm:space-y-3">
+                    <h3 className="font-semibold text-sm sm:text-base md:text-lg flex items-center gap-2 text-popover-foreground">
+                      <User className="h-3 w-3 sm:h-4 sm:w-4 md:h-5 md:w-5" />
                       Dados do Cliente
                     </h3>
-                    <div className="grid grid-cols-1 gap-3 sm:gap-4">
+                    <div className="grid grid-cols-1 gap-2 sm:gap-3">
                       <div>
-                        <Label htmlFor="nome" className="text-popover-foreground text-sm sm:text-base">
+                        <Label htmlFor="nome" className="text-popover-foreground text-xs sm:text-sm md:text-base">
                           Nome Completo *
                         </Label>
                         <Input
@@ -1631,11 +1608,11 @@ export default function MenuClientesModule() {
                           value={customerData.nome}
                           onChange={(e) => setCustomerData((prev) => ({ ...prev, nome: e.target.value }))}
                           placeholder="Seu nome completo"
-                          className="border-border focus:border-primary focus:ring-primary bg-input text-sm sm:text-base"
+                          className="border-border focus:border-primary focus:ring-primary bg-input text-xs sm:text-sm md:text-base h-10 sm:h-11"
                         />
                       </div>
                       <div>
-                        <Label htmlFor="telefone" className="text-popover-foreground text-sm sm:text-base">
+                        <Label htmlFor="telefone" className="text-popover-foreground text-xs sm:text-sm md:text-base">
                           Telefone *
                         </Label>
                         <Input
@@ -1643,19 +1620,20 @@ export default function MenuClientesModule() {
                           value={customerData.telefone}
                           onChange={(e) => setCustomerData((prev) => ({ ...prev, telefone: e.target.value }))}
                           placeholder="(11) 99999-9999"
-                          className="border-border focus:border-primary focus:ring-primary bg-input text-sm sm:text-base"
+                          className="border-border focus:border-primary focus:ring-primary bg-input text-xs sm:text-sm md:text-base h-10 sm:h-11"
                         />
                       </div>
                     </div>
                   </div>
 
-                  <div className="space-y-3 sm:space-y-4">
-                    <h3 className="font-semibold text-base sm:text-lg flex items-center gap-2 text-popover-foreground">
-                      <Home className="h-4 w-4 sm:h-5 sm:w-5" />
+                  {/* Address section */}
+                  <div className="space-y-2 sm:space-y-3">
+                    <h3 className="font-semibold text-sm sm:text-base md:text-lg flex items-center gap-2 text-popover-foreground">
+                      <Home className="h-3 w-3 sm:h-4 sm:w-4 md:h-5 md:w-5" />
                       Endereço de Entrega
                     </h3>
                     <div>
-                      <Label htmlFor="endereco" className="text-popover-foreground text-sm sm:text-base">
+                      <Label htmlFor="endereco" className="text-popover-foreground text-xs sm:text-sm md:text-base">
                         Endereço Completo *
                       </Label>
                       <Textarea
@@ -1663,12 +1641,12 @@ export default function MenuClientesModule() {
                         value={customerData.endereco}
                         onChange={(e) => setCustomerData((prev) => ({ ...prev, endereco: e.target.value }))}
                         placeholder="Rua, número, bairro, cidade"
-                        rows={3}
-                        className="border-border focus:border-primary focus:ring-primary bg-input text-sm sm:text-base"
+                        rows={2}
+                        className="border-border focus:border-primary focus:ring-primary bg-input text-xs sm:text-sm md:text-base"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="complemento" className="text-popover-foreground text-sm sm:text-base">
+                      <Label htmlFor="complemento" className="text-popover-foreground text-xs sm:text-sm md:text-base">
                         Complemento
                       </Label>
                       <Input
@@ -1676,21 +1654,22 @@ export default function MenuClientesModule() {
                         value={customerData.complemento}
                         onChange={(e) => setCustomerData((prev) => ({ ...prev, complemento: e.target.value }))}
                         placeholder="Apartamento, bloco, referência..."
-                        className="border-border focus:border-primary focus:ring-primary bg-input text-sm sm:text-base"
+                        className="border-border focus:border-primary focus:ring-primary bg-input text-xs sm:text-sm md:text-base h-10 sm:h-11"
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-3 sm:space-y-4">
-                    <h3 className="font-semibold text-base sm:text-lg flex items-center gap-2 text-popover-foreground">
-                      <CreditCard className="h-4 w-4 sm:h-5 sm:w-5" />
+                  {/* Payment section */}
+                  <div className="space-y-2 sm:space-y-3">
+                    <h3 className="font-semibold text-sm sm:text-base md:text-lg flex items-center gap-2 text-popover-foreground">
+                      <CreditCard className="h-3 w-3 sm:h-4 sm:w-4 md:h-5 md:w-5" />
                       Forma de Pagamento
                     </h3>
                     <Select
                       value={customerData.formaPagamento}
                       onValueChange={(value) => setCustomerData((prev) => ({ ...prev, formaPagamento: value }))}
                     >
-                      <SelectTrigger className="border-border focus:border-primary focus:ring-primary bg-input text-sm sm:text-base">
+                      <SelectTrigger className="border-border focus:border-primary focus:ring-primary bg-input text-xs sm:text-sm md:text-base h-10 sm:h-11">
                         <SelectValue placeholder="Selecione a forma de pagamento" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1704,34 +1683,37 @@ export default function MenuClientesModule() {
                     </Select>
                   </div>
 
-                  <div className="space-y-3 sm:space-y-4">
-                    <h3 className="font-semibold text-base sm:text-lg text-popover-foreground">Observações</h3>
+                  {/* Observations section */}
+                  <div className="space-y-2 sm:space-y-3">
+                    <h3 className="font-semibold text-sm sm:text-base md:text-lg text-popover-foreground">
+                      Observações
+                    </h3>
                     <Textarea
                       value={customerData.observacoes}
                       onChange={(e) => setCustomerData((prev) => ({ ...prev, observacoes: e.target.value }))}
                       placeholder="Alguma observação especial para seu pedido?"
-                      rows={3}
-                      className="border-border focus:border-primary focus:ring-primary bg-input text-sm sm:text-base"
+                      rows={2}
+                      className="border-border focus:border-primary focus:ring-primary bg-input text-xs sm:text-sm md:text-base"
                     />
                   </div>
+                </div>
 
-                  <div className="flex-shrink-0 p-4 border-t bg-background">
-                    <div className="flex gap-3">
-                      <Button
-                        variant="outline"
-                        onClick={() => setIsCheckoutOpen(false)}
-                        className="flex-1 border-border text-popover-foreground hover:bg-muted py-3"
-                      >
-                        Continuar Comprando
-                      </Button>
-                      <Button
-                        onClick={finalizarPedido}
-                        className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white py-3"
-                      >
-                        <CreditCard className="h-4 w-4 mr-2" />
-                        Finalizar Pedido
-                      </Button>
-                    </div>
+                <div className="flex-shrink-0 p-3 sm:p-4 border-t bg-background">
+                  <div className="flex gap-2 sm:gap-3">
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsCheckoutOpen(false)}
+                      className="flex-1 border-border text-popover-foreground hover:bg-muted py-2 sm:py-3 text-xs sm:text-sm"
+                    >
+                      Continuar Comprando
+                    </Button>
+                    <Button
+                      onClick={finalizarPedido}
+                      className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white py-2 sm:py-3 text-xs sm:text-sm"
+                    >
+                      <CreditCard className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                      Finalizar Pedido
+                    </Button>
                   </div>
                 </div>
               </DialogContent>
