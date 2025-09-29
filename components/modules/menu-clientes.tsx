@@ -99,7 +99,7 @@ export default function MenuClientesModule() {
 
   // console.log("[v0] Produtos carregados:", produtos?.length || 0, produtos)
   // console.log("[v0] Combos carregados:", combos)
-  // console.log("[v0] Bebidas carregadas:", bebidas)
+  // console.log("[v0] Bebidas carregados:", bebidas)
 
   const allMenuItems = [
     ...(produtos || []).map((item) => ({ ...item, type: "produto" as const })),
@@ -798,11 +798,11 @@ export default function MenuClientesModule() {
   const cartItemCount = getCartItemCount()
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50">
       {!lojaAberta && (
-        <div className="bg-red-50 border-b border-red-200 py-3">
+        <div className="bg-gradient-to-r from-red-500 to-red-600 border-b border-red-300 py-3 shadow-lg">
           <div className="container mx-auto px-4">
-            <div className="flex items-center justify-center gap-2 text-red-700">
+            <div className="flex items-center justify-center gap-2 text-white">
               <Clock className="h-5 w-5" />
               <span className="font-medium">
                 Estamos fechados no momento. Você pode navegar pelo cardápio, mas não é possível fazer pedidos agora.
@@ -812,11 +812,11 @@ export default function MenuClientesModule() {
         </div>
       )}
 
-      <div className="bg-card shadow-sm border-b">
-        <div className="container mx-auto px-4 py-4">
+      <div className="bg-gradient-to-r from-orange-500 via-orange-600 to-red-500 shadow-xl">
+        <div className="container mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center overflow-hidden">
+              <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center overflow-hidden border-2 border-white/30 shadow-lg">
                 {dadosEmpresa.logo_url ? (
                   <img
                     src={dadosEmpresa.logo_url || "/placeholder.svg"}
@@ -824,23 +824,29 @@ export default function MenuClientesModule() {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <ChefHat className="h-8 w-8 text-primary-foreground" />
+                  <ChefHat className="h-10 w-10 text-white" />
                 )}
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-foreground">{dadosEmpresa.nome}</h1>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <span>{dadosEmpresa.descricao || "Delivery de comida deliciosa"}</span>
-                  <div className="flex items-center gap-1">
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                <h1 className="text-3xl font-bold text-white drop-shadow-lg">{dadosEmpresa.nome}</h1>
+                <div className="flex items-center gap-3 text-sm text-white/90">
+                  <span className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full">
+                    {dadosEmpresa.descricao || "Delivery de comida deliciosa"}
+                  </span>
+                  <div className="flex items-center gap-1 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full">
+                    <Star className="h-4 w-4 fill-yellow-300 text-yellow-300" />
                     <span className="font-medium">4.8</span>
                   </div>
-                  <span>0-10 min • {getTextoFrete()}</span>
+                  <span className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full">
+                    0-10 min • {getTextoFrete()}
+                  </span>
                 </div>
               </div>
             </div>
-            <div className={`flex items-center gap-2 ${lojaAberta ? "text-green-600" : "text-red-600"}`}>
-              <div className={`w-2 h-2 rounded-full ${lojaAberta ? "bg-green-500" : "bg-red-500"}`}></div>
+            <div
+              className={`flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full border border-white/30 ${lojaAberta ? "text-green-100" : "text-red-100"}`}
+            >
+              <div className={`w-3 h-3 rounded-full ${lojaAberta ? "bg-green-400" : "bg-red-400"} shadow-lg`}></div>
               <span className="text-sm font-medium">
                 {lojaAberta ? "Aberto" : "Fechado"}
                 {!lojaAberta && <span className="ml-1 text-xs opacity-75">• Volte em breve</span>}
@@ -850,28 +856,32 @@ export default function MenuClientesModule() {
         </div>
       </div>
 
-      <div className="bg-card border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="relative max-w-md mx-auto">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
+      <div className="bg-gradient-to-r from-orange-100 to-orange-50 border-b border-orange-200 shadow-sm">
+        <div className="container mx-auto px-4 py-6">
+          <div className="relative max-w-lg mx-auto">
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-orange-500 h-5 w-5" />
             <Input
               placeholder="Buscar no cardápio"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 h-12 border-border focus:border-primary focus:ring-primary bg-input"
+              className="pl-12 h-14 border-2 border-orange-200 focus:border-orange-500 focus:ring-orange-500 bg-white shadow-lg rounded-2xl text-lg placeholder:text-orange-400"
             />
           </div>
         </div>
       </div>
 
-      <div className="sticky-category-nav">
+      <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-orange-100 shadow-sm">
         <div className="container mx-auto px-4">
-          <div className="category-filter-pills">
+          <div className="flex gap-2 py-4 overflow-x-auto scrollbar-hide">
             {categoriasDisponiveis.map((categoria) => (
               <button
                 key={categoria}
                 onClick={() => scrollToCategory(categoria)}
-                className={`category-pill ${selectedCategory === categoria ? "active" : ""}`}
+                className={`flex-shrink-0 px-6 py-3 rounded-full font-medium transition-all duration-300 ${
+                  selectedCategory === categoria
+                    ? "bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg transform scale-105"
+                    : "bg-orange-100 text-orange-700 hover:bg-orange-200 hover:scale-105"
+                }`}
               >
                 {categoria}
               </button>
@@ -881,64 +891,67 @@ export default function MenuClientesModule() {
       </div>
 
       {getTemporaryPromotionItems().length > 0 && (
-        <div className="bg-gradient-to-r from-red-50 to-orange-50 py-6">
-          <div className="container mx-auto px-4">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold animate-pulse">NOVO</div>
-              <h2 className="text-xl font-bold text-red-600">Promoção 20% Off (Novidade Temporária)</h2>
+        <div className="bg-gradient-to-r from-red-500 via-red-600 to-orange-500 py-8 relative overflow-hidden">
+          <div className="absolute inset-0 bg-black/10"></div>
+          <div className="container mx-auto px-4 relative">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="bg-white text-red-600 px-4 py-2 rounded-full text-sm font-bold animate-pulse shadow-lg">
+                🔥 NOVO
+              </div>
+              <h2 className="text-2xl font-bold text-white drop-shadow-lg">Promoção 20% Off (Novidade Temporária)</h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {getTemporaryPromotionItems().map((item) => {
                 const itemKey = getItemKey(item)
                 const cartItem = cart[itemKey]
                 const cartQuantity = cartItem?.quantity || 0
                 const originalPrice = getItemPrice(item)
-                const discountPrice = originalPrice * 0.8 // 20% de desconto
+                const discountPrice = originalPrice * 0.8
 
                 return (
                   <div
                     key={itemKey}
-                    className="flex bg-card rounded-lg overflow-hidden product-card-ifood cursor-pointer border-2 border-red-200 hover:border-red-300 transition-colors"
+                    className="flex bg-white rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 cursor-pointer transform hover:scale-105 border-2 border-white/20"
                     onClick={() => handleProductClick(item)}
                   >
                     <div className="relative">
                       <img
                         src={getItemImage(item) || "/placeholder.svg"}
                         alt={item.nome}
-                        className="w-32 h-32 object-cover flex-shrink-0"
+                        className="w-36 h-36 object-cover flex-shrink-0"
                       />
                       {!lojaAberta && (
                         <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
                           <span className="text-white font-bold text-sm">Fechado</span>
                         </div>
                       )}
-                      <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded text-xs font-bold">
+                      <div className="absolute top-3 left-3 bg-gradient-to-r from-red-500 to-red-600 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
                         -20%
                       </div>
                     </div>
-                    <div className="flex-1 p-4 flex flex-col justify-between">
+                    <div className="flex-1 p-6 flex flex-col justify-between">
                       <div>
-                        <h3 className="font-semibold text-foreground mb-1">{item.nome}</h3>
-                        <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{item.descricao}</p>
+                        <h3 className="font-bold text-lg text-gray-900 mb-2">{item.nome}</h3>
+                        <p className="text-sm text-gray-600 mb-3 line-clamp-2">{item.descricao}</p>
                       </div>
                       <div className="flex items-center justify-between">
                         <div className="flex flex-col">
-                          <span className="text-xs text-muted-foreground line-through">
+                          <span className="text-sm text-gray-500 line-through">
                             {(originalPrice || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                           </span>
-                          <span className="text-lg font-bold text-red-600">
+                          <span className="text-xl font-bold text-red-600">
                             {(discountPrice || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                           </span>
                         </div>
                         <Button
-                          size="sm"
-                          className="bg-red-500 hover:bg-red-600 text-white"
+                          size="lg"
+                          className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg rounded-full px-6"
                           onClick={(e) => {
                             e.stopPropagation()
                             handleProductClick(item)
                           }}
                         >
-                          <Plus className="h-4 w-4" />
+                          <Plus className="h-5 w-5" />
                         </Button>
                       </div>
                     </div>
@@ -950,91 +963,34 @@ export default function MenuClientesModule() {
         </div>
       )}
 
-      {getPromotionItems().length > 0 && (
-        <div className="bg-muted py-6">
-          <div className="container mx-auto px-4">
-            <h2 className="text-xl font-bold text-foreground mb-4">Até 20% off (com desconto)</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {getPromotionItems().map((item) => {
-                const itemKey = getItemKey(item)
-                const cartItem = cart[itemKey]
-                const cartQuantity = cartItem?.quantity || 0
-                const originalPrice = getItemPrice(item)
-                const discountPrice = originalPrice * 0.8 // 20% de desconto
-
-                return (
-                  <div
-                    key={itemKey}
-                    className="flex bg-card rounded-lg overflow-hidden product-card-ifood cursor-pointer"
-                    onClick={() => handleProductClick(item)}
-                  >
-                    <div className="relative">
-                      <img
-                        src={getItemImage(item) || "/placeholder.svg"}
-                        alt={item.nome}
-                        className="w-32 h-32 object-cover flex-shrink-0"
-                      />
-                      {!lojaAberta && (
-                        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                          <span className="text-white font-bold text-sm">Fechado</span>
-                        </div>
-                      )}
-                      <div className="absolute top-2 left-2 bg-orange-500 text-white px-2 py-1 rounded text-xs font-bold">
-                        -20%
-                      </div>
-                    </div>
-
-                    <div className="flex-1 p-4">
-                      <h3 className="font-semibold text-card-foreground mb-1">{item.nome}</h3>
-                      {item.descricao && (
-                        <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{item.descricao}</p>
-                      )}
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="price-highlight">
-                          {(discountPrice || 0).toLocaleString("pt-BR", {
-                            style: "currency",
-                            currency: "BRL",
-                          })}
-                        </span>
-                        <span className="discount-price">
-                          {(originalPrice || 0).toLocaleString("pt-BR", {
-                            style: "currency",
-                            currency: "BRL",
-                          })}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">Serve 1 pessoa</span>
-                        {cartQuantity > 0 && (
-                          <span className="bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full">
-                            {cartQuantity}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="bg-background py-6">
+      <div className="bg-gradient-to-br from-orange-50 to-white py-8">
         <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-foreground">Destaques</h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+              <span className="w-2 h-8 bg-gradient-to-b from-orange-500 to-red-500 rounded-full"></span>
+              Destaques
+            </h2>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => scrollHighlights("left")} className="border-border">
-                <ChevronLeft className="h-4 w-4" />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => scrollHighlights("left")}
+                className="border-orange-200 hover:bg-orange-50 rounded-full w-10 h-10 p-0"
+              >
+                <ChevronLeft className="h-5 w-5 text-orange-600" />
               </Button>
-              <Button variant="outline" size="sm" onClick={() => scrollHighlights("right")} className="border-border">
-                <ChevronRight className="h-4 w-4" />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => scrollHighlights("right")}
+                className="border-orange-200 hover:bg-orange-50 rounded-full w-10 h-10 p-0"
+              >
+                <ChevronRight className="h-5 w-5 text-orange-600" />
               </Button>
             </div>
           </div>
 
-          <div ref={highlightsRef} className="highlights-carousel flex gap-4 overflow-x-auto pb-4">
+          <div ref={highlightsRef} className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide">
             {getHighlightItems().map((item) => {
               const itemKey = getItemKey(item)
               const cartItem = cart[itemKey]
@@ -1043,46 +999,47 @@ export default function MenuClientesModule() {
               return (
                 <div
                   key={itemKey}
-                  className="flex-shrink-0 w-72 product-card-ifood rounded-lg overflow-hidden cursor-pointer"
+                  className="flex-shrink-0 w-80 bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer transform hover:scale-105 border border-orange-100"
                   onClick={() => handleProductClick(item)}
                 >
                   <div className="relative">
                     <img
                       src={getItemImage(item) || "/placeholder.svg"}
                       alt={item.nome}
-                      className="w-full h-40 object-cover"
+                      className="w-full h-48 object-cover"
                       loading="lazy"
                     />
                     {cartQuantity > 0 && (
-                      <div className="absolute top-2 right-2 bg-primary text-primary-foreground text-sm px-2 py-1 rounded-full font-medium">
+                      <div className="absolute top-3 right-3 bg-gradient-to-r from-orange-500 to-red-500 text-white text-sm px-3 py-1 rounded-full font-medium shadow-lg">
                         {cartQuantity}
                       </div>
                     )}
-                    <div className="absolute top-2 left-2">
-                      <span className="promotion-badge text-xs px-2 py-1 rounded-full font-medium">Destaque</span>
+                    <div className="absolute top-3 left-3">
+                      <span className="bg-gradient-to-r from-yellow-400 to-orange-400 text-white text-xs px-3 py-1 rounded-full font-medium shadow-lg">
+                        ⭐ Destaque
+                      </span>
                     </div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
                   </div>
-                  <div className="p-4">
-                    <h3 className="font-semibold text-card-foreground mb-1 line-clamp-1">{item.nome}</h3>
-                    {item.descricao && (
-                      <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{item.descricao}</p>
-                    )}
+                  <div className="p-6">
+                    <h3 className="font-bold text-lg text-gray-900 mb-2 line-clamp-1">{item.nome}</h3>
+                    {item.descricao && <p className="text-sm text-gray-600 mb-4 line-clamp-2">{item.descricao}</p>}
                     <div className="flex items-center justify-between">
-                      <span className="price-highlight">
+                      <span className="text-2xl font-bold text-orange-600">
                         {(getItemPrice(item) || 0).toLocaleString("pt-BR", {
                           style: "currency",
                           currency: "BRL",
                         })}
                       </span>
                       <Button
-                        size="sm"
-                        className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                        size="lg"
+                        className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white shadow-lg rounded-full px-6"
                         onClick={(e) => {
                           e.stopPropagation()
                           openCustomizeModal(item)
                         }}
                       >
-                        <Plus className="h-4 w-4" />
+                        <Plus className="h-5 w-5" />
                       </Button>
                     </div>
                   </div>
@@ -1093,85 +1050,97 @@ export default function MenuClientesModule() {
         </div>
       </div>
 
-      {categoriasDisponiveis.slice(1).map((categoria) => {
-        if (categoriasPromocionais.includes(categoria)) return null
+      <div className="container mx-auto px-4 py-8">
+        {categoriasDisponiveis.slice(1).map((categoria) => {
+          if (categoriasPromocionais.includes(categoria)) return null
 
-        const categoryItems = getItemsByCategory(categoria)
-        if (categoryItems.length === 0) return null
+          const categoryItems = getItemsByCategory(categoria)
+          if (categoryItems.length === 0) return null
 
-        return (
-          <div key={categoria} ref={(el) => (categoryRefs.current[categoria] = el)} className="category-section mb-12">
-            <h2 className="text-2xl font-bold text-foreground mb-6">{categoria}</h2>
-            <div className="space-y-4">
-              {categoryItems.map((item) => {
-                const itemKey = getItemKey(item)
-                const cartItem = cart[itemKey]
-                const cartQuantity = cartItem?.quantity || 0
+          return (
+            <div key={categoria} ref={(el) => (categoryRefs.current[categoria] = el)} className="mb-12">
+              <h2 className="text-3xl font-bold text-gray-900 mb-8 flex items-center gap-3">
+                <span className="w-2 h-8 bg-gradient-to-b from-orange-500 to-red-500 rounded-full"></span>
+                {categoria}
+              </h2>
+              <div className="space-y-6">
+                {categoryItems.map((item) => {
+                  const itemKey = getItemKey(item)
+                  const cartItem = cart[itemKey]
+                  const cartQuantity = cartItem?.quantity || 0
 
-                return (
-                  <div
-                    key={itemKey}
-                    className="flex bg-card rounded-lg overflow-hidden product-card-ifood cursor-pointer"
-                    onClick={() => handleProductClick(item)}
-                  >
-                    <img
-                      src={getItemImage(item) || "/placeholder.svg"}
-                      alt={item.nome}
-                      className="w-32 h-32 object-cover flex-shrink-0"
-                      loading="lazy"
-                    />
-                    <div className="flex-1 p-4">
-                      <h3 className="font-semibold text-card-foreground mb-1">{item.nome}</h3>
-                      {item.descricao && (
-                        <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{item.descricao}</p>
-                      )}
-                      <div className="flex items-center justify-between">
-                        <span className="price-highlight">
-                          {(getItemPrice(item) || 0).toLocaleString("pt-BR", {
-                            style: "currency",
-                            currency: "BRL",
-                          })}
-                        </span>
-                        {cartQuantity === 0 ? (
-                          <Button
-                            size="sm"
-                            className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              openCustomizeModal(item)
-                            }}
-                          >
-                            <Plus className="h-4 w-4" />
-                          </Button>
-                        ) : (
-                          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                  return (
+                    <div
+                      key={itemKey}
+                      className="flex bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:scale-[1.02] border border-orange-100"
+                      onClick={() => handleProductClick(item)}
+                    >
+                      <div className="relative">
+                        <img
+                          src={getItemImage(item) || "/placeholder.svg"}
+                          alt={item.nome}
+                          className="w-36 h-36 object-cover flex-shrink-0"
+                          loading="lazy"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-transparent"></div>
+                      </div>
+                      <div className="flex-1 p-6 flex flex-col justify-between">
+                        <div>
+                          <h3 className="font-bold text-xl text-gray-900 mb-2">{item.nome}</h3>
+                          {item.descricao && (
+                            <p className="text-gray-600 mb-4 line-clamp-2 leading-relaxed">{item.descricao}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-2xl font-bold text-orange-600">
+                            {(getItemPrice(item) || 0).toLocaleString("pt-BR", {
+                              style: "currency",
+                              currency: "BRL",
+                            })}
+                          </span>
+                          {cartQuantity === 0 ? (
                             <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => removeFromCart(itemKey)}
-                              className="border-primary text-primary hover:bg-primary/10"
+                              size="lg"
+                              className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white shadow-lg rounded-full px-6"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                openCustomizeModal(item)
+                              }}
                             >
-                              <Minus className="h-4 w-4" />
+                              <Plus className="h-5 w-5" />
                             </Button>
-                            <span className="font-medium px-2">{cartQuantity}</span>
-                            <Button
-                              size="sm"
-                              onClick={() => openCustomizeModal(item)}
-                              className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                            >
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        )}
+                          ) : (
+                            <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => removeFromCart(itemKey)}
+                                className="border-orange-300 text-orange-600 hover:bg-orange-50 rounded-full w-10 h-10 p-0"
+                              >
+                                <Minus className="h-4 w-4" />
+                              </Button>
+                              <span className="font-bold text-lg px-3 py-1 bg-orange-100 text-orange-800 rounded-full min-w-[3rem] text-center">
+                                {cartQuantity}
+                              </span>
+                              <Button
+                                size="sm"
+                                onClick={() => openCustomizeModal(item)}
+                                className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-full w-10 h-10 p-0"
+                              >
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
             </div>
-          </div>
-        )
-      })}
+          )
+        })}
+      </div>
 
       <Dialog open={isCustomizeOpen} onOpenChange={setIsCustomizeOpen}>
         <DialogContent className="modal-ifood max-w-2xl bg-popover p-0">
@@ -1747,25 +1716,29 @@ export default function MenuClientesModule() {
         </DialogContent>
       </Dialog>
 
-      <div className="bg-primary py-6 mt-12">
+      <div className="bg-gradient-to-r from-orange-500 via-orange-600 to-red-500 py-8 mt-12">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row items-center justify-between text-primary-foreground">
+          <div className="flex flex-col md:flex-row items-center justify-between text-white">
             <div className="flex items-center gap-4 mb-4 md:mb-0">
-              <p className="text-lg">
-                <span className="font-bold">
+              <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
+                <Clock className="h-8 w-8 text-white" />
+              </div>
+              <div>
+                <p className="text-xl font-bold">
                   {dadosEmpresa.horario_funcionamento || "Segunda a Sábado: 18h às 23h"}
-                </span>
-              </p>
+                </p>
+                <p className="text-white/80">Horário de funcionamento</p>
+              </div>
             </div>
 
             <div className="flex items-center gap-6">
               <div className="text-right">
-                <p className="text-2xl font-black">Delivery</p>
-                <p className="text-sm opacity-90">Ligue já!</p>
+                <p className="text-3xl font-black drop-shadow-lg">Delivery</p>
+                <p className="text-white/80">Ligue já!</p>
               </div>
-              <div className="flex items-center gap-2 bg-white/20 rounded-lg px-4 py-2">
-                <Phone className="h-5 w-5" />
-                <span className="text-xl font-bold">{dadosEmpresa.telefone}</span>
+              <div className="flex items-center gap-3 bg-white/20 backdrop-blur-sm rounded-2xl px-6 py-3 border border-white/30">
+                <Phone className="h-6 w-6" />
+                <span className="text-2xl font-bold">{dadosEmpresa.telefone}</span>
               </div>
             </div>
           </div>
