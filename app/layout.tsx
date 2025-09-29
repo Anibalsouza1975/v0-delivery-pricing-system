@@ -19,6 +19,7 @@ export const metadata: Metadata = {
   title: "Sistema de Precificação Delivery",
   description: "Sistema completo para precificação de delivery e restaurantes",
   generator: "v0.app",
+  viewport: "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no",
 }
 
 export default function RootLayout({
@@ -28,6 +29,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" className={`${inter.variable} ${jetbrainsMono.variable}`}>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+      </head>
       <body className="font-sans antialiased">
         <Suspense fallback={null}>
           <PricingProvider>{children}</PricingProvider>
