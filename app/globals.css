@@ -1,79 +1,77 @@
 @import "tailwindcss";
-
+@import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Tema laranja REAL com saturação vibrante */
-  --background: oklch(0.98 0.02 45); /* Fundo laranja muito claro */
-  --foreground: oklch(0.15 0.05 25); /* Texto escuro com toque laranja */
-  --card: oklch(0.99 0.015 40); /* Cards com laranja suave */
-  --card-foreground: oklch(0.15 0.05 25);
-  --popover: oklch(0.99 0.015 40);
-  --popover-foreground: oklch(0.15 0.05 25);
-  --primary: oklch(0.65 0.18 35); /* Botões laranja vibrante */
-  --primary-foreground: oklch(0.98 0.02 45); /* Texto claro nos botões */
-  --secondary: oklch(0.95 0.03 40); /* Secundário laranja claro */
-  --secondary-foreground: oklch(0.25 0.08 30);
-  --muted: oklch(0.96 0.025 42); /* Elementos silenciados em laranja suave */
-  --muted-foreground: oklch(0.55 0.06 35);
-  --accent: oklch(0.92 0.05 38); /* Accent laranja mais vibrante */
-  --accent-foreground: oklch(0.25 0.08 30);
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.98 0.02 45);
-  --border: oklch(0.9 0.04 40); /* Bordas laranja suave */
-  --input: oklch(0.97 0.02 42); /* Inputs com fundo laranja claro */
-  --ring: oklch(0.7 0.15 38); /* Ring laranja para foco */
+  --destructive-foreground: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
   --radius: 0.625rem;
-  --sidebar: oklch(0.97 0.025 42); /* Sidebar laranja claro */
-  --sidebar-foreground: oklch(0.15 0.05 25);
-  --sidebar-primary: oklch(0.65 0.18 35); /* Primary da sidebar laranja */
-  --sidebar-primary-foreground: oklch(0.98 0.02 45);
-  --sidebar-accent: oklch(0.94 0.035 40);
-  --sidebar-accent-foreground: oklch(0.25 0.08 30);
-  --sidebar-border: oklch(0.9 0.04 40);
-  --sidebar-ring: oklch(0.7 0.15 38);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
 }
 
 .dark {
-  /* Tema escuro com laranja vibrante e saturação real */
-  --background: oklch(0.12 0.03 30); /* Fundo escuro com toque laranja */
-  --foreground: oklch(0.95 0.02 45); /* Texto claro com toque laranja */
-  --card: oklch(0.15 0.04 32); /* Cards escuros com toque laranja */
-  --card-foreground: oklch(0.95 0.02 45);
-  --popover: oklch(0.15 0.04 32);
-  --popover-foreground: oklch(0.95 0.02 45);
-  --primary: oklch(0.75 0.15 40); /* Botões laranja mais vibrante no escuro */
-  --primary-foreground: oklch(0.12 0.03 30);
-  --secondary: oklch(0.25 0.05 35); /* Secundário escuro com laranja */
-  --secondary-foreground: oklch(0.95 0.02 45);
-  --muted: oklch(0.22 0.04 33);
-  --muted-foreground: oklch(0.65 0.06 38);
-  --accent: oklch(0.28 0.06 36); /* Accent escuro com laranja */
-  --accent-foreground: oklch(0.95 0.02 45);
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.145 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.145 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.95 0.02 45);
-  --border: oklch(0.25 0.05 35);
-  --input: oklch(0.22 0.04 33);
-  --ring: oklch(0.6 0.12 40); /* Ring laranja para foco */
+  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --border: oklch(0.269 0 0);
+  --input: oklch(0.269 0 0);
+  --ring: oklch(0.439 0 0);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.18 0.04 32); /* Sidebar escura com laranja */
-  --sidebar-foreground: oklch(0.95 0.02 45);
-  --sidebar-primary: oklch(0.75 0.15 40); /* Primary da sidebar laranja */
-  --sidebar-primary-foreground: oklch(0.12 0.03 30);
-  --sidebar-accent: oklch(0.25 0.05 35);
-  --sidebar-accent-foreground: oklch(0.95 0.02 45);
-  --sidebar-border: oklch(0.25 0.05 35);
-  --sidebar-ring: oklch(0.6 0.12 40);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.269 0 0);
+  --sidebar-ring: oklch(0.439 0 0);
 }
 
 @theme inline {
@@ -121,7 +119,6 @@
   }
   body {
     @apply bg-background text-foreground;
-    background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); /* Fundo geral com tema laranja suave */
   }
 }
 
@@ -261,4 +258,209 @@ button[class*="bg-primary"]:active,
 .header-orange {
   background: linear-gradient(135deg, #fb923c 0%, #f97316 50%, #ea580c 100%);
   color: white;
+}
+
+/* Adicionando estilos específicos para checkboxes verdes */
+/* Classe específica para checkboxes verdes que sobrescreve o tema laranja */
+.checkbox-green {
+  background-color: white !important;
+  border: 2px solid #d1d5db !important;
+  border-radius: 4px !important;
+  transition: all 0.2s ease !important;
+}
+
+.checkbox-green:hover {
+  border-color: #22c55e !important;
+  background-color: #f0fdf4 !important;
+}
+
+.checkbox-green[data-state="checked"] {
+  background-color: #22c55e !important;
+  border-color: #22c55e !important;
+  color: white !important;
+}
+
+.checkbox-green[data-state="checked"]:hover {
+  background-color: #16a34a !important;
+  border-color: #16a34a !important;
+}
+
+/* Estilo para o ícone de check dentro do checkbox */
+.checkbox-green[data-state="checked"] svg {
+  color: white !important;
+  fill: white !important;
+}
+
+/* Estilo para as divs clicáveis dos checkboxes */
+.checkbox-option-row {
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  border-radius: 8px !important;
+  padding: 12px !important;
+}
+
+.checkbox-option-row:hover {
+  background-color: #f0fdf4 !important;
+  border: 1px solid #22c55e !important;
+}
+
+.checkbox-option-row.selected {
+  background-color: #f0fdf4 !important;
+  border: 1px solid #22c55e !important;
+}
+
+/* Adicionando classes específicas para campos de entrada com fundo branco */
+/* Classes específicas para campos de entrada do formulário de checkout */
+.form-input-white {
+  background-color: white !important;
+  border: 2px solid #d1d5db !important;
+  color: #1f2937 !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease !important;
+}
+
+.form-input-white::placeholder {
+  color: #6b7280 !important;
+  opacity: 0.8 !important;
+}
+
+.form-input-white:focus {
+  border-color: #f97316 !important;
+  ring-color: #f97316 !important;
+  background-color: white !important;
+  color: #1f2937 !important;
+}
+
+.form-input-white:hover {
+  border-color: #fb923c !important;
+  background-color: white !important;
+}
+
+/* Classes ultra-específicas para campos de entrada do formulário de checkout */
+input.form-input-white,
+input[class*="form-input-white"],
+.form-input-white input,
+input.form-input-white:not([disabled]) {
+  background-color: white !important;
+  background: white !important;
+  border: 2px solid #d1d5db !important;
+  color: #1f2937 !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease !important;
+}
+
+input.form-input-white::placeholder,
+input[class*="form-input-white"]::placeholder,
+.form-input-white input::placeholder,
+input.form-input-white:not([disabled])::placeholder {
+  color: #6b7280 !important;
+  opacity: 0.8 !important;
+}
+
+input.form-input-white:focus,
+input[class*="form-input-white"]:focus,
+.form-input-white input:focus,
+input.form-input-white:not([disabled]):focus {
+  border-color: #f97316 !important;
+  ring-color: #f97316 !important;
+  background-color: white !important;
+  background: white !important;
+  color: #1f2937 !important;
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2) !important;
+}
+
+input.form-input-white:hover,
+input[class*="form-input-white"]:hover,
+.form-input-white input:hover,
+input.form-input-white:not([disabled]):hover {
+  border-color: #fb923c !important;
+  background-color: white !important;
+  background: white !important;
+  color: #1f2937 !important;
+}
+
+/* Classes ultra-específicas para textarea do formulário */
+.form-textarea-white {
+  background-color: white !important;
+  border: 2px solid #d1d5db !important;
+  color: #1f2937 !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease !important;
+  resize: vertical !important;
+}
+
+.form-textarea-white::placeholder {
+  color: #6b7280 !important;
+  opacity: 0.8 !important;
+}
+
+.form-textarea-white:focus {
+  border-color: #f97316 !important;
+  ring-color: #f97316 !important;
+  background-color: white !important;
+  background: white !important;
+  color: #1f2937 !important;
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2) !important;
+}
+
+.form-textarea-white:hover {
+  border-color: #fb923c !important;
+  background-color: white !important;
+  background: white !important;
+  color: #1f2937 !important;
+}
+
+textarea.form-textarea-white,
+textarea[class*="form-textarea-white"],
+.form-textarea-white textarea,
+textarea.form-textarea-white:not([disabled]) {
+  background-color: white !important;
+  background: white !important;
+  border: 2px solid #d1d5db !important;
+  color: #1f2937 !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease !important;
+  resize: vertical !important;
+}
+
+textarea.form-textarea-white::placeholder,
+textarea[class*="form-textarea-white"]::placeholder,
+.form-textarea-white textarea::placeholder,
+textarea.form-textarea-white:not([disabled])::placeholder {
+  color: #6b7280 !important;
+  opacity: 0.8 !important;
+}
+
+textarea.form-textarea-white:focus,
+textarea[class*="form-textarea-white"]:focus,
+.form-textarea-white textarea:focus,
+textarea.form-textarea-white:not([disabled]):focus {
+  border-color: #f97316 !important;
+  ring-color: #f97316 !important;
+  background-color: white !important;
+  background: white !important;
+  color: #1f2937 !important;
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2) !important;
+}
+
+textarea.form-textarea-white:hover,
+textarea[class*="form-textarea-white"]:hover,
+.form-textarea-white textarea:hover,
+textarea.form-textarea-white:not([disabled]):hover {
+  border-color: #fb923c !important;
+  background-color: white !important;
+  background: white !important;
+  color: #1f2937 !important;
+}
+
+/* Sobrescrever qualquer estilo de tema que possa estar interferindo */
+[data-theme] input.form-input-white,
+[data-theme] textarea.form-textarea-white,
+.dark input.form-input-white,
+.dark textarea.form-textarea-white,
+.light input.form-input-white,
+.light textarea.form-textarea-white {
+  background-color: white !important;
+  background: white !important;
+  color: #1f2937 !important;
 }

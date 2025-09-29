@@ -136,7 +136,15 @@ export default function MenuClientesModule() {
   const categoriasDisponiveis = getAvailableCategories()
 
   const [cart, setCart] = useState<
-    Record<string, { quantity: number; customizations?: { removed: string[]; added: string[] }; comments?: string }>
+    Record<
+      string,
+      {
+        quantity: number
+        customizations?: { removed: string[]; added: string[] }
+        comments?: string
+        originalItemId?: string
+      }
+    >
   >({})
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
   const [isCustomizeOpen, setIsCustomizeOpen] = useState(false)
@@ -315,6 +323,14 @@ export default function MenuClientesModule() {
       } else {
         delete newCart[itemId]
       }
+      return newCart
+    })
+  }
+
+  const removeItemFromCart = (cartKey: string) => {
+    setCart((prev) => {
+      const newCart = { ...prev }
+      delete newCart[cartKey]
       return newCart
     })
   }
@@ -1238,7 +1254,17 @@ export default function MenuClientesModule() {
                     ).map((adicional) => (
                       <div
                         key={adicional.id}
-                        className="flex items-center justify-between p-3 sm:p-4 border border-border rounded-lg bg-white shadow-sm"
+                        className={`checkbox-option-row flex items-center justify-between p-3 sm:p-4 border border-border rounded-lg bg-white shadow-sm cursor-pointer hover:bg-gray-50 transition-colors ${
+                          addedIngredients.includes(adicional.nome) ? "selected" : ""
+                        }`}
+                        onClick={() => {
+                          const isChecked = addedIngredients.includes(adicional.nome)
+                          if (isChecked) {
+                            setAddedIngredients(addedIngredients.filter((i) => i !== adicional.nome))
+                          } else {
+                            setAddedIngredients([...addedIngredients, adicional.nome])
+                          }
+                        }}
                       >
                         <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
                           <Checkbox
@@ -1251,7 +1277,7 @@ export default function MenuClientesModule() {
                                 setAddedIngredients(addedIngredients.filter((i) => i !== adicional.nome))
                               }
                             }}
-                            className="border-2 border-gray-300 data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500 data-[state=checked]:text-white w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0"
+                            className="checkbox-green w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0 pointer-events-none"
                           />
                           <span className="text-popover-foreground text-sm sm:text-base md:text-lg font-medium truncate">
                             {adicional.nome}
@@ -1290,7 +1316,17 @@ export default function MenuClientesModule() {
                     ).map((personalizacao) => (
                       <div
                         key={personalizacao.id}
-                        className="flex items-center justify-between p-3 sm:p-4 border border-border rounded-lg bg-white shadow-sm"
+                        className={`checkbox-option-row flex items-center justify-between p-3 sm:p-4 border border-border rounded-lg bg-white shadow-sm cursor-pointer hover:bg-gray-50 transition-colors ${
+                          selectedPersonalizacoes.includes(personalizacao.nome) ? "selected" : ""
+                        }`}
+                        onClick={() => {
+                          const isChecked = selectedPersonalizacoes.includes(personalizacao.nome)
+                          if (isChecked) {
+                            setSelectedPersonalizacoes(selectedPersonalizacoes.filter((p) => p !== personalizacao.nome))
+                          } else {
+                            setSelectedPersonalizacoes([...selectedPersonalizacoes, personalizacao.nome])
+                          }
+                        }}
                       >
                         <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
                           <Checkbox
@@ -1305,7 +1341,7 @@ export default function MenuClientesModule() {
                                 )
                               }
                             }}
-                            className="border-2 border-gray-300 data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500 data-[state=checked]:text-white w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0"
+                            className="checkbox-green w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0 pointer-events-none"
                           />
                           <div className="flex flex-col min-w-0 flex-1">
                             <span className="text-popover-foreground text-sm sm:text-base md:text-lg font-medium truncate">
@@ -1357,41 +1393,51 @@ export default function MenuClientesModule() {
             </div>
 
             <div className="flex-shrink-0 p-4 sm:p-6 border-t border-border bg-background">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
+              <div className="flex flex-col gap-3 sm:gap-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsCustomizeOpen(false)}
+                  className="w-full border-2 border-gray-300 text-gray-700 hover:bg-gray-50 py-2 sm:py-3 text-sm sm:text-base font-medium"
+                >
+                  Voltar ao Menu
+                </Button>
+
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-2 border-gray-300 bg-white hover:bg-gray-50 w-10 h-10 sm:w-12 sm:h-12 p-0"
+                      onClick={() => setModalQuantity(Math.max(1, modalQuantity - 1))}
+                      disabled={modalQuantity <= 1}
+                    >
+                      <Minus className="h-4 w-4 sm:h-5 sm:w-5" />
+                    </Button>
+                    <span className="font-bold text-lg sm:text-xl px-4 py-2 bg-gray-100 rounded-lg min-w-[3rem] sm:min-w-[4rem] text-center">
+                      {modalQuantity}
+                    </span>
+                    <Button
+                      size="sm"
+                      className="bg-orange-500 hover:bg-orange-600 text-white w-10 h-10 sm:w-12 sm:h-12 p-0"
+                      onClick={() => setModalQuantity(modalQuantity + 1)}
+                    >
+                      <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
+                    </Button>
+                  </div>
+
                   <Button
-                    variant="outline"
-                    size="sm"
-                    className="border-2 border-gray-300 bg-white hover:bg-gray-50 w-10 h-10 sm:w-12 sm:h-12 p-0"
-                    onClick={() => setModalQuantity(Math.max(1, modalQuantity - 1))}
-                    disabled={modalQuantity <= 1}
+                    onClick={confirmCustomization}
+                    className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-6 py-3 sm:px-8 sm:py-4 font-semibold shadow-lg rounded-full transition-all duration-200 flex-1 max-w-xs text-base sm:text-lg"
+                    disabled={!selectedItem}
                   >
-                    <Minus className="h-4 w-4 sm:h-5 sm:w-5" />
-                  </Button>
-                  <span className="font-bold text-lg sm:text-xl px-4 py-2 bg-gray-100 rounded-lg min-w-[3rem] sm:min-w-[4rem] text-center">
-                    {modalQuantity}
-                  </span>
-                  <Button
-                    size="sm"
-                    className="bg-orange-500 hover:bg-orange-600 text-white w-10 h-10 sm:w-12 sm:h-12 p-0"
-                    onClick={() => setModalQuantity(modalQuantity + 1)}
-                  >
-                    <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
+                    <Plus className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
+                    Adicionar •{" "}
+                    {(getModalItemPrice() || 0).toLocaleString("pt-BR", {
+                      style: "currency",
+                      currency: "BRL",
+                    })}
                   </Button>
                 </div>
-
-                <Button
-                  onClick={confirmCustomization}
-                  className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-6 py-3 sm:px-8 sm:py-4 font-semibold shadow-lg rounded-full transition-all duration-200 flex-1 max-w-xs text-base sm:text-lg"
-                  disabled={!selectedItem}
-                >
-                  <Plus className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-                  Adicionar •{" "}
-                  {(getModalItemPrice() || 0).toLocaleString("pt-BR", {
-                    style: "currency",
-                    currency: "BRL",
-                  })}
-                </Button>
               </div>
             </div>
           </div>
@@ -1551,23 +1597,32 @@ export default function MenuClientesModule() {
                                   )}
                                 </div>
 
-                                <div className="text-right flex-shrink-0">
+                                <div className="flex items-center justify-between">
                                   <div className="font-bold text-sm sm:text-base md:text-lg text-gray-900">
                                     {(totalItemPrice || 0).toLocaleString("pt-BR", {
                                       style: "currency",
                                       currency: "BRL",
                                     })}
                                   </div>
-                                  {cartItem.quantity > 1 && (
-                                    <div className="text-xs text-gray-500">
-                                      {((totalItemPrice || 0) / cartItem.quantity).toLocaleString("pt-BR", {
-                                        style: "currency",
-                                        currency: "BRL",
-                                      })}{" "}
-                                      cada
-                                    </div>
-                                  )}
+                                  <Button
+                                    onClick={() => removeItemFromCart(cartKey)}
+                                    variant="destructive"
+                                    size="sm"
+                                    className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 text-xs font-medium rounded-full"
+                                    title="Remover item"
+                                  >
+                                    Excluir
+                                  </Button>
                                 </div>
+                                {cartItem.quantity > 1 && (
+                                  <div className="text-xs text-gray-500">
+                                    {((totalItemPrice || 0) / cartItem.quantity).toLocaleString("pt-BR", {
+                                      style: "currency",
+                                      currency: "BRL",
+                                    })}{" "}
+                                    cada
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -1608,7 +1663,7 @@ export default function MenuClientesModule() {
                       <div>
                         <Label
                           htmlFor="nome"
-                          className="text-popover-foreground text-sm sm:text-base md:text-lg font-medium"
+                          className="text-popover-foreground text-sm sm:text-base md:text-lg font-medium mb-2 block"
                         >
                           Nome Completo *
                         </Label>
@@ -1617,13 +1672,13 @@ export default function MenuClientesModule() {
                           value={customerData.nome}
                           onChange={(e) => setCustomerData((prev) => ({ ...prev, nome: e.target.value }))}
                           placeholder="Seu nome completo"
-                          className="border-2 border-gray-300 focus:border-orange-500 focus:ring-orange-500 bg-white text-gray-900 placeholder:text-gray-500 text-sm sm:text-base md:text-lg h-12 sm:h-14 p-3 sm:p-4"
+                          className="form-input-white h-12 sm:h-14 p-3 sm:p-4 text-sm sm:text-base md:text-lg"
                         />
                       </div>
                       <div>
                         <Label
                           htmlFor="telefone"
-                          className="text-popover-foreground text-sm sm:text-base md:text-lg font-medium"
+                          className="text-popover-foreground text-sm sm:text-base md:text-lg font-medium mb-2 block"
                         >
                           Telefone *
                         </Label>
@@ -1632,7 +1687,7 @@ export default function MenuClientesModule() {
                           value={customerData.telefone}
                           onChange={(e) => setCustomerData((prev) => ({ ...prev, telefone: e.target.value }))}
                           placeholder="(11) 99999-9999"
-                          className="border-2 border-gray-300 focus:border-orange-500 focus:ring-orange-500 bg-white text-gray-900 placeholder:text-gray-500 text-sm sm:text-base md:text-lg h-12 sm:h-14 p-3 sm:p-4"
+                          className="form-input-white h-12 sm:h-14 p-3 sm:p-4 text-sm sm:text-base md:text-lg"
                         />
                       </div>
                     </div>
@@ -1647,7 +1702,7 @@ export default function MenuClientesModule() {
                     <div>
                       <Label
                         htmlFor="endereco"
-                        className="text-popover-foreground text-sm sm:text-base md:text-lg font-medium"
+                        className="text-popover-foreground text-sm sm:text-base md:text-lg font-medium mb-2 block"
                       >
                         Endereço Completo *
                       </Label>
@@ -1657,13 +1712,13 @@ export default function MenuClientesModule() {
                         onChange={(e) => setCustomerData((prev) => ({ ...prev, endereco: e.target.value }))}
                         placeholder="Rua, número, bairro, cidade"
                         rows={3}
-                        className="border-2 border-gray-300 focus:border-orange-500 focus:ring-orange-500 bg-white text-gray-900 placeholder:text-gray-500 text-sm sm:text-base md:text-lg p-3 sm:p-4"
+                        className="form-textarea-white p-3 sm:p-4 text-sm sm:text-base md:text-lg"
                       />
                     </div>
                     <div>
                       <Label
                         htmlFor="complemento"
-                        className="text-popover-foreground text-sm sm:text-base md:text-lg font-medium"
+                        className="text-popover-foreground text-sm sm:text-base md:text-lg font-medium mb-2 block"
                       >
                         Complemento
                       </Label>
@@ -1672,7 +1727,7 @@ export default function MenuClientesModule() {
                         value={customerData.complemento}
                         onChange={(e) => setCustomerData((prev) => ({ ...prev, complemento: e.target.value }))}
                         placeholder="Apartamento, bloco, referência..."
-                        className="border-2 border-gray-300 focus:border-orange-500 focus:ring-orange-500 bg-white text-gray-900 placeholder:text-gray-500 text-sm sm:text-base md:text-lg h-12 sm:h-14 p-3 sm:p-4"
+                        className="form-input-white h-12 sm:h-14 p-3 sm:p-4 text-sm sm:text-base md:text-lg"
                       />
                     </div>
                   </div>
@@ -1687,7 +1742,7 @@ export default function MenuClientesModule() {
                       value={customerData.formaPagamento}
                       onValueChange={(value) => setCustomerData((prev) => ({ ...prev, formaPagamento: value }))}
                     >
-                      <SelectTrigger className="border-2 border-gray-300 focus:border-orange-500 focus:ring-orange-500 bg-white text-gray-900 text-sm sm:text-base md:text-lg h-12 sm:h-14">
+                      <SelectTrigger className="border-2 border-gray-300 focus:border-orange-500 focus:ring-orange-500 bg-white text-gray-900 text-sm sm:text-base md:text-lg h-12 sm:h-14 font-medium">
                         <SelectValue placeholder="Selecione a forma de pagamento" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1711,7 +1766,7 @@ export default function MenuClientesModule() {
                       onChange={(e) => setCustomerData((prev) => ({ ...prev, observacoes: e.target.value }))}
                       placeholder="Alguma observação especial para seu pedido?"
                       rows={3}
-                      className="border-2 border-gray-300 focus:border-orange-500 focus:ring-orange-500 bg-white text-gray-900 placeholder:text-gray-500 text-sm sm:text-base md:text-lg p-3 sm:p-4"
+                      className="form-textarea-white p-3 sm:p-4 text-sm sm:text-base md:text-lg"
                     />
                   </div>
                 </div>
