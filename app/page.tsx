@@ -298,7 +298,7 @@ const modules = [
 
 export default function DeliveryPricingSystem() {
   const [activeModule, setActiveModule] = useState<string | null>(null)
-  const [isRefreshing, setIsRefreshing] = useState(false) // Added refresh state
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const {
     getTotalCustosFixos,
     produtos,
@@ -309,28 +309,22 @@ export default function DeliveryPricingSystem() {
     estoqueInsumos,
     loading,
     refreshData,
-    refreshDataSilent, // Added silent refresh function
+    refreshDataSilent,
   } = usePricing()
 
   useEffect(() => {
     const interval = setInterval(() => {
-      console.log("[v0] Auto-refreshing data silently...")
-      refreshDataSilent() // Using silent refresh to avoid loading screen
-    }, 60000) // 60 seconds = 1 minute
+      refreshDataSilent()
+    }, 60000)
 
     return () => clearInterval(interval)
   }, [refreshDataSilent])
 
   const handleManualRefresh = async () => {
     setIsRefreshing(true)
-    console.log("[v0] Manual refresh triggered")
-    await refreshData() // Manual refresh shows loading
+    await refreshData()
     setTimeout(() => setIsRefreshing(false), 1000)
   }
-
-  console.log("[v0] Component rendered, activeModule:", activeModule)
-  console.log("[v0] Dados de vendas:", vendas)
-  console.log("[v0] Quantidade de vendas:", vendas?.length || 0)
 
   if (loading) {
     return <LoadingScreen />
@@ -338,7 +332,6 @@ export default function DeliveryPricingSystem() {
 
   const totalVendas =
     vendas?.reduce((acc, venda) => {
-      console.log("[v0] Processando venda:", venda.numero_pedido, "Total:", venda.total)
       return acc + venda.total
     }, 0) || 0
 
@@ -346,16 +339,11 @@ export default function DeliveryPricingSystem() {
   const vendasHojeArray =
     vendas?.filter((venda) => {
       const dataVenda = new Date(venda.data_venda).toDateString()
-      console.log("[v0] Comparando datas - Hoje:", hoje, "Venda:", dataVenda, "Match:", dataVenda === hoje)
       return dataVenda === hoje
     }) || []
 
   const vendasHojeTotal = vendasHojeArray.reduce((acc, venda) => acc + venda.total, 0)
   const quantidadeVendasHoje = vendasHojeArray.length
-
-  console.log("[v0] Total vendas calculado:", totalVendas)
-  console.log("[v0] Vendas hoje total:", vendasHojeTotal)
-  console.log("[v0] Quantidade vendas hoje:", quantidadeVendasHoje)
 
   const custosVariaveisPercentual = getTotalCustosVariaveis()
   const custosVariaveisValidos = Number.isFinite(custosVariaveisPercentual) ? custosVariaveisPercentual : 0
@@ -364,13 +352,10 @@ export default function DeliveryPricingSystem() {
   const custosFixosValidos = Number.isFinite(custosFixosTotal) ? custosFixosTotal : 0
 
   const handleModuleClick = (moduleId: string) => {
-    console.log("[v0] Module clicked:", moduleId)
     setActiveModule(moduleId)
-    console.log("[v0] Active module set to:", moduleId)
   }
 
   const renderModuleContent = () => {
-    console.log("[v0] Rendering module content for:", activeModule)
     switch (activeModule) {
       case "diagnostico-bd":
         return <DiagnosticoBDModule />
@@ -431,45 +416,45 @@ export default function DeliveryPricingSystem() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Header */}
-      <header className="border-b bg-gradient-to-r from-slate-900 to-slate-800 shadow-lg">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-white">Cartago Burguer Grill - Sistema Completo</h1>
-              <p className="text-slate-300 mt-2">Sistema integrado de precificação, vendas, estoque e gestão</p>
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100">
+      <header className="border-b bg-gradient-to-r from-orange-600 to-red-600 shadow-lg">
+        <div className="container mx-auto px-4 py-4 md:py-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="text-center md:text-left">
+              <h1 className="text-xl md:text-3xl font-bold text-white">Cartago Burguer Grill - Sistema Completo</h1>
+              <p className="text-orange-100 mt-1 md:mt-2 text-sm md:text-base">
+                Sistema integrado de precificação, vendas, estoque e gestão
+              </p>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center justify-center md:justify-end gap-2 md:gap-4">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleManualRefresh}
                 disabled={isRefreshing}
-                className="flex items-center gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20"
+                className="flex items-center gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20 text-xs md:text-sm"
               >
-                <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+                <RefreshCw className={`h-3 w-3 md:h-4 md:w-4 ${isRefreshing ? "animate-spin" : ""}`} />
                 {isRefreshing ? "Atualizando..." : "Atualizar"}
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setActiveModule("migration")}
-                className="flex items-center gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20"
+                className="flex items-center gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20 text-xs md:text-sm"
               >
-                <Database className="h-4 w-4" />
+                <Database className="h-3 w-3 md:h-4 md:w-4" />
                 Migração
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  console.log("[v0] Data management button clicked")
                   setActiveModule("data-management")
                 }}
-                className="flex items-center gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20"
+                className="flex items-center gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20 text-xs md:text-sm"
               >
-                <Settings className="h-4 w-4" />
+                <Settings className="h-3 w-3 md:h-4 md:w-4" />
                 Dados
               </Button>
             </div>
@@ -477,20 +462,18 @@ export default function DeliveryPricingSystem() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-4 md:py-8">
         {!activeModule ? (
           <>
-            {/* Dashboard Overview */}
-            <div className="mb-8">
-              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-8">
+            <div className="mb-6 md:mb-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 md:gap-6 mb-6 md:mb-8">
                 <Card className="bg-gradient-to-br from-green-500 to-green-600 border-0 text-white shadow-lg">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium text-green-100">Total Vendas</CardTitle>
                     <DollarSign className="h-4 w-4 text-green-200" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">
+                    <div className="text-xl md:text-2xl font-bold">
                       {totalVendas.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                     </div>
                     <p className="text-xs text-green-200">{vendas?.length || 0} vendas • Faturamento total</p>
@@ -503,7 +486,7 @@ export default function DeliveryPricingSystem() {
                     <Receipt className="h-4 w-4 text-blue-200" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">
+                    <div className="text-xl md:text-2xl font-bold">
                       {vendasHojeTotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                     </div>
                     <p className="text-xs text-blue-200">{quantidadeVendasHoje} vendas • Faturamento hoje</p>
@@ -516,7 +499,7 @@ export default function DeliveryPricingSystem() {
                     <Package className="h-4 w-4 text-purple-200" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{produtos.length}</div>
+                    <div className="text-xl md:text-2xl font-bold">{produtos.length}</div>
                     <p className="text-xs text-purple-200">Itens no cardápio</p>
                   </CardContent>
                 </Card>
@@ -527,7 +510,7 @@ export default function DeliveryPricingSystem() {
                     <Calculator className="h-4 w-4 text-orange-200" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">
+                    <div className="text-xl md:text-2xl font-bold">
                       {custosFixosValidos.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                     </div>
                     <p className="text-xs text-orange-200">Mensais</p>
@@ -540,7 +523,7 @@ export default function DeliveryPricingSystem() {
                     <Target className="h-4 w-4 text-teal-200" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{custosVariaveisValidos.toFixed(1)}%</div>
+                    <div className="text-xl md:text-2xl font-bold">{custosVariaveisValidos.toFixed(1)}%</div>
                     <p className="text-xs text-teal-200">Do faturamento</p>
                   </CardContent>
                 </Card>
@@ -548,22 +531,21 @@ export default function DeliveryPricingSystem() {
                 <Card className="bg-gradient-to-br from-indigo-500 to-indigo-600 border-0 text-white shadow-lg">
                   <CardHeader>
                     <div className="flex items-center space-x-2">
-                      <div className="p-2 rounded-lg bg-white/20">
-                        <Package className="h-5 w-5 text-white" />
+                      <div className="p-2 md:p-3 rounded-lg bg-white/20">
+                        <Package className="h-4 w-4 md:h-5 md:w-5 text-white" />
                       </div>
-                      <CardTitle className="text-lg text-white">Itens Estoque</CardTitle>
+                      <CardTitle className="text-base md:text-lg text-white">Itens Estoque</CardTitle>
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{estoqueInsumos?.length || 0}</div>
+                    <div className="text-xl md:text-2xl font-bold">{estoqueInsumos?.length || 0}</div>
                     <p className="text-xs text-indigo-200">Insumos controlados</p>
                   </CardContent>
                 </Card>
               </div>
             </div>
 
-            {/* Modules Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
               {modules.map((module) => {
                 const IconComponent = module.icon
                 return (
@@ -571,27 +553,27 @@ export default function DeliveryPricingSystem() {
                     key={module.id}
                     className="cursor-pointer hover:shadow-xl transition-all duration-300 hover:scale-105 bg-white/80 backdrop-blur-sm border-0 shadow-lg"
                     onClick={() => {
-                      console.log("[v0] Card clicked for module:", module.id)
                       handleModuleClick(module.id)
                     }}
                   >
-                    <CardHeader>
+                    <CardHeader className="pb-3">
                       <div className="flex items-center space-x-2">
-                        <div className={`p-3 rounded-xl ${module.color} shadow-lg`}>
-                          <IconComponent className="h-6 w-6 text-white" />
+                        <div className={`p-2 md:p-3 rounded-xl ${module.color} shadow-lg`}>
+                          <IconComponent className="h-5 w-5 md:h-6 md:w-6 text-white" />
                         </div>
-                        <CardTitle className="text-lg text-slate-800">{module.title}</CardTitle>
+                        <CardTitle className="text-base md:text-lg text-slate-800 leading-tight">
+                          {module.title}
+                        </CardTitle>
                       </div>
                     </CardHeader>
-                    <CardContent>
-                      <CardDescription className="text-sm leading-relaxed text-slate-600 mb-4">
+                    <CardContent className="pt-0">
+                      <CardDescription className="text-sm leading-relaxed text-slate-600 mb-4 line-clamp-3">
                         {module.description}
                       </CardDescription>
                       <Button
-                        className="w-full bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200"
+                        className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200 text-sm"
                         onClick={(e) => {
                           e.stopPropagation()
-                          console.log("[v0] Button clicked for module:", module.id)
                           handleModuleClick(module.id)
                         }}
                       >
@@ -605,8 +587,8 @@ export default function DeliveryPricingSystem() {
           </>
         ) : (
           <div>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-slate-800">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 md:mb-6 gap-4">
+              <h2 className="text-xl md:text-2xl font-bold text-slate-800">
                 {activeModule === "data-management"
                   ? "Gerenciamento de Dados"
                   : activeModule === "migration"
@@ -616,10 +598,9 @@ export default function DeliveryPricingSystem() {
               <Button
                 variant="outline"
                 onClick={() => {
-                  console.log("[v0] Back button clicked")
                   setActiveModule(null)
                 }}
-                className="bg-white/80 border-slate-300 text-slate-700 hover:bg-slate-100"
+                className="bg-white/80 border-slate-300 text-slate-700 hover:bg-slate-100 w-full sm:w-auto"
               >
                 Voltar ao Dashboard
               </Button>

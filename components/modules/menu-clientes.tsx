@@ -1151,7 +1151,7 @@ export default function MenuClientesModule() {
             </DialogDescription>
           </DialogHeader>
           <div className="relative">
-            <div className="modal-image-container">
+            <div className="modal-image-container relative h-64 overflow-hidden rounded-t-lg">
               {selectedItem && (
                 <img
                   src={getItemImage(selectedItem) || "/placeholder.svg"}
@@ -1162,49 +1162,51 @@ export default function MenuClientesModule() {
               )}
               <button
                 onClick={() => setIsCustomizeOpen(false)}
-                className="absolute top-4 right-4 w-8 h-8 bg-background rounded-full flex items-center justify-center text-foreground hover:text-primary shadow-md"
+                className="absolute top-4 right-4 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center text-gray-700 hover:text-primary shadow-lg hover:bg-white transition-all duration-200"
               >
                 ×
               </button>
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent h-24"></div>
-              <div className="absolute bottom-4 left-4 text-white">
-                <h2 className="text-2xl font-bold mb-1 drop-shadow-lg">{selectedItem?.nome}</h2>
-                <p className="text-lg font-semibold drop-shadow-lg">
-                  {selectedItem &&
-                    getItemPrice(selectedItem).toLocaleString("pt-BR", {
-                      style: "currency",
-                      currency: "BRL",
-                    })}
-                </p>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+            </div>
+
+            <div className="p-6 border-b border-border">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-popover-foreground mb-2">{selectedItem?.nome}</h2>
+                  <p className="text-lg font-semibold text-primary">
+                    {selectedItem &&
+                      getItemPrice(selectedItem).toLocaleString("pt-BR", {
+                        style: "currency",
+                        currency: "BRL",
+                      })}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 bg-muted/50 px-4 py-2 rounded-full">
+                  <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center overflow-hidden">
+                    {dadosEmpresa.logo_url ? (
+                      <img
+                        src={dadosEmpresa.logo_url || "/placeholder.svg"}
+                        alt={`Logo ${dadosEmpresa.nome}`}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <ChefHat className="h-4 w-4 text-primary-foreground" />
+                    )}
+                  </div>
+                  <div className="text-sm">
+                    <p className="font-medium text-popover-foreground">{dadosEmpresa.nome}</p>
+                    <div className="flex items-center gap-1 text-muted-foreground">
+                      <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                      <span>4.8</span>
+                      <span>•</span>
+                      <span>0-10 min</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
             <div className="p-6 space-y-6">
-              <div className="flex items-center gap-3 pb-4 border-b border-border">
-                <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center overflow-hidden">
-                  {dadosEmpresa.logo_url ? (
-                    <img
-                      src={dadosEmpresa.logo_url || "/placeholder.svg"}
-                      alt={`Logo ${dadosEmpresa.nome}`}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <ChefHat className="h-4 w-4 text-primary-foreground" />
-                  )}
-                </div>
-                <div>
-                  <p className="font-medium text-popover-foreground">{dadosEmpresa.nome}</p>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                    <span>4.8</span>
-                    <span>•</span>
-                    <span>0-10 min</span>
-                    <span>•</span>
-                    <span>{getTextoFrete()}</span>
-                  </div>
-                </div>
-              </div>
-
               {(selectedItem?.type === "produto"
                 ? getAdicionaisParaProduto(selectedItem)
                 : selectedItem?.type === "combo"
@@ -1366,13 +1368,15 @@ export default function MenuClientesModule() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="border-border bg-transparent"
+                    className="border-border bg-transparent hover:bg-muted"
                     onClick={() => setModalQuantity(Math.max(1, modalQuantity - 1))}
                     disabled={modalQuantity <= 1}
                   >
                     <Minus className="h-4 w-4" />
                   </Button>
-                  <span className="font-medium text-lg">{modalQuantity}</span>
+                  <span className="font-medium text-lg px-4 py-2 bg-muted rounded-lg min-w-[3rem] text-center">
+                    {modalQuantity}
+                  </span>
                   <Button
                     size="sm"
                     className="bg-primary hover:bg-primary/90 text-primary-foreground"
@@ -1384,8 +1388,10 @@ export default function MenuClientesModule() {
 
                 <Button
                   onClick={confirmCustomization}
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 text-lg font-medium"
+                  className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-8 py-3 text-lg font-medium shadow-lg rounded-full transition-all duration-200 hover:scale-105"
+                  disabled={!selectedItem}
                 >
+                  <Plus className="h-5 w-5 mr-2" />
                   Adicionar •{" "}
                   {(getModalItemPrice() || 0).toLocaleString("pt-BR", {
                     style: "currency",
