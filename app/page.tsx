@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
@@ -299,6 +300,11 @@ const modules = [
 export default function DeliveryPricingSystem() {
   const [activeModule, setActiveModule] = useState<string | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [authCode, setAuthCode] = useState("")
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false)
+  const router = useRouter()
+
   const {
     getTotalCustosFixos,
     produtos,
@@ -311,6 +317,54 @@ export default function DeliveryPricingSystem() {
     refreshData,
     refreshDataSilent,
   } = usePricing()
+
+  useEffect(() => {
+    const checkAuth = () => {
+      const adminAuth = localStorage.getItem("admin_auth")
+      const currentTime = Date.now()
+
+      if (adminAuth) {
+        const authData = JSON.parse(adminAuth)
+        // Check if auth is still valid (24 hours)
+        if (currentTime - authData.timestamp < 24 * 60 * 60 * 1000) {
+          setIsAuthenticated(true)
+          return
+        } else {
+          localStorage.removeItem("admin_auth")
+        }
+      }
+
+      // Show auth prompt after a brief delay
+      setTimeout(() => {
+        setShowAuthPrompt(true)
+      }, 1000)
+    }
+
+    checkAuth()
+  }, [])
+
+  const handleAuth = () => {
+    // Simple authentication - you can change this code
+    const correctCode = "ADMIN2024"
+
+    if (authCode === correctCode) {
+      const authData = {
+        authenticated: true,
+        timestamp: Date.now(),
+      }
+      localStorage.setItem("admin_auth", JSON.stringify(authData))
+      setIsAuthenticated(true)
+      setShowAuthPrompt(false)
+      setAuthCode("")
+    } else {
+      alert("Código incorreto!")
+      setAuthCode("")
+    }
+  }
+
+  const redirectToCustomerMenu = () => {
+    router.push("/m/cb2024")
+  }
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -327,6 +381,52 @@ export default function DeliveryPricingSystem() {
   }
 
   if (loading) {
+    return <LoadingScreen />
+  }
+
+  if (showAuthPrompt && !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full mx-4">
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-bold text-slate-800 mb-2">Acesso Restrito</h2>
+            <p className="text-slate-600">Esta área é restrita para administradores.</p>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Código de Acesso</label>
+              <input
+                type="password"
+                value={authCode}
+                onChange={(e) => setAuthCode(e.target.value)}
+                onKeyPress={(e) => e.key === "Enter" && handleAuth()}
+                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                placeholder="Digite o código de acesso"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleAuth}
+                className="flex-1 bg-orange-600 text-white py-2 px-4 rounded-md hover:bg-orange-700 transition-colors"
+              >
+                Entrar
+              </button>
+              <button
+                onClick={redirectToCustomerMenu}
+                className="flex-1 bg-slate-600 text-white py-2 px-4 rounded-md hover:bg-slate-700 transition-colors"
+              >
+                Ver Cardápio
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
     return <LoadingScreen />
   }
 
