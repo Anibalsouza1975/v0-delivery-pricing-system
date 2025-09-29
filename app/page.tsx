@@ -431,14 +431,14 @@ export default function DeliveryPricingSystem() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Header */}
-      <header className="border-b bg-card">
+      <header className="border-b bg-gradient-to-r from-slate-900 to-slate-800 shadow-lg">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">Cartago Burguer Grill - Sistema Completo</h1>
-              <p className="text-muted-foreground mt-2">Sistema integrado de precificação, vendas, estoque e gestão</p>
+              <h1 className="text-3xl font-bold text-white">Cartago Burguer Grill - Sistema Completo</h1>
+              <p className="text-slate-300 mt-2">Sistema integrado de precificação, vendas, estoque e gestão</p>
             </div>
             <div className="flex items-center gap-4">
               <Button
@@ -446,7 +446,7 @@ export default function DeliveryPricingSystem() {
                 size="sm"
                 onClick={handleManualRefresh}
                 disabled={isRefreshing}
-                className="flex items-center gap-2 bg-transparent"
+                className="flex items-center gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20"
               >
                 <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
                 {isRefreshing ? "Atualizando..." : "Atualizar"}
@@ -455,7 +455,7 @@ export default function DeliveryPricingSystem() {
                 variant="outline"
                 size="sm"
                 onClick={() => setActiveModule("migration")}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20"
               >
                 <Database className="h-4 w-4" />
                 Migração
@@ -467,7 +467,7 @@ export default function DeliveryPricingSystem() {
                   console.log("[v0] Data management button clicked")
                   setActiveModule("data-management")
                 }}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20"
               >
                 <Settings className="h-4 w-4" />
                 Dados
@@ -484,79 +484,79 @@ export default function DeliveryPricingSystem() {
             {/* Dashboard Overview */}
             <div className="mb-8">
               <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-8">
-                <Card>
+                <Card className="bg-gradient-to-br from-green-500 to-green-600 border-0 text-white shadow-lg">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Vendas</CardTitle>
-                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                    <CardTitle className="text-sm font-medium text-green-100">Total Vendas</CardTitle>
+                    <DollarSign className="h-4 w-4 text-green-200" />
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">
                       {totalVendas.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                     </div>
-                    <p className="text-xs text-muted-foreground">{vendas?.length || 0} vendas • Faturamento total</p>
+                    <p className="text-xs text-green-200">{vendas?.length || 0} vendas • Faturamento total</p>
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="bg-gradient-to-br from-blue-500 to-blue-600 border-0 text-white shadow-lg">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Vendas Hoje</CardTitle>
-                    <Receipt className="h-4 w-4 text-muted-foreground" />
+                    <CardTitle className="text-sm font-medium text-blue-100">Vendas Hoje</CardTitle>
+                    <Receipt className="h-4 w-4 text-blue-200" />
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">
                       {vendasHojeTotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                     </div>
-                    <p className="text-xs text-muted-foreground">{quantidadeVendasHoje} vendas • Faturamento hoje</p>
+                    <p className="text-xs text-blue-200">{quantidadeVendasHoje} vendas • Faturamento hoje</p>
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="bg-gradient-to-br from-purple-500 to-purple-600 border-0 text-white shadow-lg">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Produtos Cadastrados</CardTitle>
-                    <Package className="h-4 w-4 text-muted-foreground" />
+                    <CardTitle className="text-sm font-medium text-purple-100">Produtos Cadastrados</CardTitle>
+                    <Package className="h-4 w-4 text-purple-200" />
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">{produtos.length}</div>
-                    <p className="text-xs text-muted-foreground">Itens no cardápio</p>
+                    <p className="text-xs text-purple-200">Itens no cardápio</p>
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="bg-gradient-to-br from-orange-500 to-orange-600 border-0 text-white shadow-lg">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Custos Fixos</CardTitle>
-                    <Calculator className="h-4 w-4 text-muted-foreground" />
+                    <CardTitle className="text-sm font-medium text-orange-100">Custos Fixos</CardTitle>
+                    <Calculator className="h-4 w-4 text-orange-200" />
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">
                       {custosFixosValidos.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                     </div>
-                    <p className="text-xs text-muted-foreground">Mensais</p>
+                    <p className="text-xs text-orange-200">Mensais</p>
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="bg-gradient-to-br from-teal-500 to-teal-600 border-0 text-white shadow-lg">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Custos Variáveis</CardTitle>
-                    <Target className="h-4 w-4 text-muted-foreground" />
+                    <CardTitle className="text-sm font-medium text-teal-100">Custos Variáveis</CardTitle>
+                    <Target className="h-4 w-4 text-teal-200" />
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">{custosVariaveisValidos.toFixed(1)}%</div>
-                    <p className="text-xs text-muted-foreground">Do faturamento</p>
+                    <p className="text-xs text-teal-200">Do faturamento</p>
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="bg-gradient-to-br from-indigo-500 to-indigo-600 border-0 text-white shadow-lg">
                   <CardHeader>
                     <div className="flex items-center space-x-2">
-                      <div className="p-2 rounded-lg bg-purple-500">
+                      <div className="p-2 rounded-lg bg-white/20">
                         <Package className="h-5 w-5 text-white" />
                       </div>
-                      <CardTitle className="text-lg">Itens Estoque</CardTitle>
+                      <CardTitle className="text-lg text-white">Itens Estoque</CardTitle>
                     </div>
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">{estoqueInsumos?.length || 0}</div>
-                    <p className="text-xs text-muted-foreground">Insumos controlados</p>
+                    <p className="text-xs text-indigo-200">Insumos controlados</p>
                   </CardContent>
                 </Card>
               </div>
@@ -569,7 +569,7 @@ export default function DeliveryPricingSystem() {
                 return (
                   <Card
                     key={module.id}
-                    className="cursor-pointer hover:shadow-lg transition-shadow duration-200"
+                    className="cursor-pointer hover:shadow-xl transition-all duration-300 hover:scale-105 bg-white/80 backdrop-blur-sm border-0 shadow-lg"
                     onClick={() => {
                       console.log("[v0] Card clicked for module:", module.id)
                       handleModuleClick(module.id)
@@ -577,17 +577,18 @@ export default function DeliveryPricingSystem() {
                   >
                     <CardHeader>
                       <div className="flex items-center space-x-2">
-                        <div className={`p-2 rounded-lg ${module.color}`}>
-                          <IconComponent className="h-5 w-5 text-white" />
+                        <div className={`p-3 rounded-xl ${module.color} shadow-lg`}>
+                          <IconComponent className="h-6 w-6 text-white" />
                         </div>
-                        <CardTitle className="text-lg">{module.title}</CardTitle>
+                        <CardTitle className="text-lg text-slate-800">{module.title}</CardTitle>
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <CardDescription className="text-sm leading-relaxed">{module.description}</CardDescription>
+                      <CardDescription className="text-sm leading-relaxed text-slate-600 mb-4">
+                        {module.description}
+                      </CardDescription>
                       <Button
-                        className="w-full mt-4 bg-transparent"
-                        variant="outline"
+                        className="w-full bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200"
                         onClick={(e) => {
                           e.stopPropagation()
                           console.log("[v0] Button clicked for module:", module.id)
@@ -605,7 +606,7 @@ export default function DeliveryPricingSystem() {
         ) : (
           <div>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">
+              <h2 className="text-2xl font-bold text-slate-800">
                 {activeModule === "data-management"
                   ? "Gerenciamento de Dados"
                   : activeModule === "migration"
@@ -618,6 +619,7 @@ export default function DeliveryPricingSystem() {
                   console.log("[v0] Back button clicked")
                   setActiveModule(null)
                 }}
+                className="bg-white/80 border-slate-300 text-slate-700 hover:bg-slate-100"
               >
                 Voltar ao Dashboard
               </Button>

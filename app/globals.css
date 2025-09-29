@@ -1,11 +1,10 @@
 @import "tailwindcss";
-
+@import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Cores atualizadas para design do menu conforme design brief */
-  /* Atualizando cores para sistema de precificação automática */
+  /* Tema Apetitoso - Cores que despertam fome */
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -77,7 +76,6 @@
 }
 
 @theme inline {
-  /* Corrigindo variáveis de fonte para usar Inter e JetBrains_Mono */
   --font-sans: var(--font-inter);
   --font-mono: var(--font-jetbrains-mono);
   --color-background: var(--background);
@@ -120,73 +118,19 @@
 
 @layer base {
   * {
+    border-color: var(--border);
+    outline-color: rgba(var(--ring), 0.5);
     @apply border-border outline-ring/50;
   }
   body {
+    background-color: var(--background);
+    color: var(--foreground);
+    min-height: 100vh;
     @apply bg-background text-foreground;
   }
 }
 
-/* Estilos premium para menu estilo iFood */
-.ifood-hero {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-  position: relative;
-  overflow: hidden;
-}
-
-.category-section {
-  scroll-margin-top: 120px;
-}
-
-.sticky-category-nav {
-  backdrop-filter: blur(20px);
-  background: rgba(255, 255, 255, 0.95);
-  border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
-  z-index: 40;
-}
-
-.highlights-carousel {
-  scroll-behavior: smooth;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.highlights-carousel::-webkit-scrollbar {
-  display: none;
-}
-
-.product-card-ifood {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border: 1px solid var(--border);
-  background: var(--card);
-}
-
-.product-card-ifood:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 32px rgba(234, 88, 12, 0.15);
-  border-color: var(--primary);
-}
-
-.promotion-badge {
-  background: linear-gradient(45deg, #ef4444, #f97316);
-  color: white;
-  position: relative;
-  overflow: hidden;
-}
-
-.promotion-badge::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-  animation: shine 2s infinite;
-}
-
+/* Animações */
 @keyframes shine {
   0% {
     left: -100%;
@@ -196,159 +140,96 @@
   }
 }
 
-.modal-ifood {
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-.modal-image-container {
-  position: relative;
-  height: 280px;
-  overflow: hidden;
-}
-
-.modal-image-container img {
-  transition: transform 0.3s ease;
-}
-
-.modal-image-container:hover img {
-  transform: scale(1.05);
-}
-
-.category-filter-pills {
-  display: flex;
-  gap: 0.5rem;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  padding: 1rem 0;
-}
-
-.category-filter-pills::-webkit-scrollbar {
-  display: none;
-}
-
-.category-pill {
-  flex-shrink: 0;
-  padding: 0.5rem 1rem;
-  border-radius: 9999px;
-  border: 1px solid var(--border);
-  background: var(--background);
-  color: var(--foreground);
-  transition: all 0.2s ease;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.category-pill.active {
-  background: var(--primary);
-  color: var(--primary-foreground);
-  border-color: var(--primary);
-}
-
-.category-pill:hover:not(.active) {
-  background: var(--muted);
-  border-color: var(--primary);
-}
-
-.price-highlight {
-  background: var(--primary);
-  color: var(--primary-foreground);
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.375rem;
-  font-weight: 600;
-}
-
-.discount-price {
-  color: var(--muted-foreground);
-  text-decoration: line-through;
-  font-size: 0.875rem;
-}
-
-/* Estilos existentes mantidos */
-.delivery-hero {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-}
-
-.product-card {
+/* Estilos específicos para cards e componentes do dashboard */
+.dashboard-card {
+  background: linear-gradient(135deg, #ffffff 0%, #fef7ed 100%);
+  border: 2px solid #fed7aa;
+  color: var(--card-foreground);
+  box-shadow: 0 8px 32px rgba(234, 88, 12, 0.15);
   transition: all 0.3s ease;
-  border: 1px solid var(--border);
+  border-radius: 1rem;
+  overflow: hidden;
+  position: relative;
 }
 
-.product-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 32px rgba(234, 88, 12, 0.15);
+.dashboard-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 20px 60px rgba(234, 88, 12, 0.25);
+  border-color: #ea580c;
 }
 
-.category-badge {
-  background: var(--accent);
-  color: var(--accent-foreground);
-}
-
-.price-tag {
-  background: var(--primary);
-  color: var(--primary-foreground);
-}
-
-.cart-item {
-  transition: all 0.2s ease;
-}
-
-.cart-item:hover {
-  background: var(--muted);
-}
-
-.status-preparing {
-  background: #fbbf24;
-  color: #92400e;
-}
-
-.status-ready {
-  background: #10b981;
-  color: #065f46;
-}
-
-.status-delivered {
-  background: #6b7280;
-  color: #374151;
-}
-
-.banner-overlay {
-  background: linear-gradient(45deg, rgba(220, 38, 38, 0.9), rgba(249, 115, 22, 0.8));
-}
-
-/* Adicionado estilo para overlay de loja fechada */
-.store-closed-overlay {
+.dashboard-card::after {
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 0.5rem;
-  z-index: 10;
+  height: 4px;
+  background: linear-gradient(90deg, #ea580c, #dc2626, #ea580c);
 }
 
-.store-closed-text {
-  background: rgba(220, 38, 38, 0.9);
+.metric-card {
+  background: linear-gradient(135deg, #ffffff 0%, #fef7ed 100%);
+  border: 2px solid #fed7aa;
+  color: var(--card-foreground);
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 32px rgba(234, 88, 12, 0.15);
+  border-radius: 1rem;
+  overflow: hidden;
+  position: relative;
+}
+
+.metric-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 20px 60px rgba(234, 88, 12, 0.25);
+  border-color: #ea580c;
+}
+
+.metric-card::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #ea580c, #dc2626, #ea580c);
+}
+
+.module-card {
+  background: linear-gradient(135deg, #ffffff 0%, #fef7ed 100%);
+  border: 2px solid #fed7aa;
+  color: var(--card-foreground);
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 32px rgba(234, 88, 12, 0.15);
+  border-radius: 1rem;
+  overflow: hidden;
+  position: relative;
+}
+
+.module-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 20px 60px rgba(234, 88, 12, 0.25);
+  border-color: #ea580c;
+}
+
+.module-card::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #ea580c, #dc2626, #ea580c);
+}
+
+.appetite-badge {
+  background: linear-gradient(45deg, #dc2626, #ea580c);
   color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
-  font-weight: 600;
-  font-size: 0.875rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-}
-
-.product-card-disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-.product-card-disabled:hover {
-  transform: none;
-  box-shadow: none;
+  box-shadow: 0 2px 8px rgba(234, 88, 12, 0.3);
 }
