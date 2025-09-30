@@ -3,8 +3,10 @@ import { generateText } from "ai"
 import { groq } from "@ai-sdk/groq"
 import { createClient } from "@supabase/supabase-js"
 
-// Verificação do webhook (Meta exige isso)
 export async function GET(request: NextRequest) {
+  // Log IMMEDIATELY - before any processing
+  console.log("[v0] 🔔 ===== WEBHOOK GET CHAMADO =====", new Date().toISOString())
+
   const searchParams = request.nextUrl.searchParams
   const mode = searchParams.get("hub.mode")
   const token = searchParams.get("hub.verify_token")
@@ -83,14 +85,11 @@ export async function GET(request: NextRequest) {
 const mensagensProcessadas = new Set<string>()
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
-// Recebimento de mensagens
 export async function POST(request: NextRequest) {
   // Log IMMEDIATELY when POST is called
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(7)}`
+  console.log(`[v0] 🔔 ===== WEBHOOK POST CHAMADO ===== [${requestId}]`, new Date().toISOString())
   console.log(`[v0] 🚀 ===== WEBHOOK POST INICIADO [${requestId}] =====`)
-  console.log(`[v0] [${requestId}] Timestamp:`, new Date().toISOString())
-  console.log(`[v0] [${requestId}] Method:`, request.method)
-  console.log(`[v0] [${requestId}] URL:`, request.url)
 
   try {
     console.log(`[v0] [${requestId}] User-Agent:`, request.headers.get("user-agent"))
