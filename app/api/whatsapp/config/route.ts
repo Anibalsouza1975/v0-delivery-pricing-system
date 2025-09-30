@@ -15,6 +15,22 @@ export async function GET() {
     console.log("[v0] WhatsApp Phone Number ID:", WHATSAPP_PHONE_NUMBER_ID)
     console.log("[v0] WhatsApp Access Token exists:", !!WHATSAPP_ACCESS_TOKEN)
 
+    if (WHATSAPP_ACCESS_TOKEN) {
+      const tokenStart = WHATSAPP_ACCESS_TOKEN.substring(0, 20)
+      const tokenEnd = WHATSAPP_ACCESS_TOKEN.substring(WHATSAPP_ACCESS_TOKEN.length - 10)
+      console.log(`[v0] Token Preview: ${tokenStart}...${tokenEnd}`)
+      console.log(`[v0] Token Length: ${WHATSAPP_ACCESS_TOKEN.length}`)
+
+      // Check which token is being used
+      if (tokenStart.includes("EAALON6v2KzMBPq8CgUm")) {
+        console.log("[v0] ⚠️ USANDO TOKEN ANTIGO EXPIRADO!")
+      } else if (tokenStart.includes("EAALON6v2KzMBPr5sHF7")) {
+        console.log("[v0] ✅ USANDO TOKEN NOVO!")
+      } else {
+        console.log("[v0] ❓ Token não reconhecido")
+      }
+    }
+
     const hasWhatsAppTokens = !!(WHATSAPP_ACCESS_TOKEN && WHATSAPP_PHONE_NUMBER_ID && WHATSAPP_VERIFY_TOKEN)
 
     let whatsappApiStatus = "desconectado"
@@ -29,6 +45,7 @@ export async function GET() {
           headers: {
             Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
           },
+          cache: "no-store",
         })
 
         console.log("[v0] Resposta da API WhatsApp:", response.status)
@@ -43,13 +60,14 @@ export async function GET() {
             whatsappApiStatus = "conectado"
           }
         } else {
-          // Check if response is JSON before parsing
           const contentType = response.headers.get("content-type")
           if (contentType && contentType.includes("application/json")) {
             const errorData = await response.json()
             console.log("[v0] Erro da API WhatsApp:", errorData)
 
             if (errorData.error && errorData.error.code === 190) {
+              console.log("[v0] 🚨 TOKEN EXPIRADO DETECTADO!")
+              console.log("[v0] 📅 Data de expiração:", errorData.error.message)
               tokenError = {
                 type: "token_expired",
                 message: errorData.error.message,
@@ -59,7 +77,6 @@ export async function GET() {
               whatsappApiStatus = "token_expirado"
             }
           } else {
-            // Handle non-JSON error responses (like rate limiting)
             const errorText = await response.text()
             console.log("[v0] Erro da API WhatsApp (texto):", errorText)
 
@@ -128,7 +145,7 @@ export async function GET() {
     const updatedConfig = {
       ...data,
       status_conexao: whatsappApiStatus,
-      token_error: tokenError, // This is only for the response, not saved to DB
+      token_error: tokenError,
     }
 
     if (data.status_conexao !== updatedConfig.status_conexao) {
