@@ -167,16 +167,22 @@ export async function POST(request: NextRequest) {
 
             try {
               await salvarConversaNoBanco(from, text, messageId)
+
               const resposta = await processarMensagemComIA(text, from)
               console.log("[v0] Resposta da IA gerada:", resposta)
+
+              // This ensures the response appears in the dashboard even if WhatsApp sending fails
+              await salvarRespostaNoBanco(from, resposta)
+              console.log("[v0] ✅ Resposta salva no banco de dados")
 
               const enviado = await enviarMensagemWhatsApp(from, resposta)
 
               if (enviado) {
-                console.log("[v0] ✅ Mensagem enviada com sucesso para:", from)
-                await salvarRespostaNoBanco(from, resposta)
+                console.log("[v0] ✅ Mensagem enviada com sucesso via WhatsApp para:", from)
+                await atualizarStatusMensagem(from, resposta, "enviada")
               } else {
-                console.log("[v0] ❌ Falha ao enviar mensagem para:", from)
+                console.log("[v0] ⚠️ Falha ao enviar via WhatsApp, mas resposta já está salva no banco")
+                await atualizarStatusMensagem(from, resposta, "pendente")
               }
             } catch (error) {
               console.error("[v0] ❌ Erro ao processar mensagem:", error)
@@ -224,6 +230,49 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
   try {
     console.log("[v0] Iniciando processamento IA para:", mensagem)
 
+    const isOrderTracking = /rastreio|rastrear|pedido|acompanhar|status.*pedido|onde.*está|número.*pedido/i.test(
+      mensagem,
+    )
+
+    if (isOrderTracking) {
+      console.log("[v0] Detectado: pergunta sobre rastreamento de pedido")
+
+      // Extrair número do pedido se mencionado
+      const numeroPedidoMatch = mensagem.match(/#?(\d{4,6})/)
+
+      if (numeroPedidoMatch) {
+        const numeroPedido = numeroPedidoMatch[1]
+        console.log("[v0] Número do pedido detectado:", numeroPedido)
+
+        // Buscar pedido no banco de dados
+        try {
+          const response = await fetch(
+            `${process.env.NEXT_PUBLIC_SUPABASE_URL?.replace("/rest/v1", "")}/api/pedidos/buscar?numero=${numeroPedido}`,
+          )
+
+          if (response.ok) {
+            const { pedido } = await response.json()
+
+            return (
+              `📦 Encontrei seu pedido #${pedido.numero_pedido}!\n\n` +
+              `Status: ${getStatusEmoji(pedido.status)} ${getStatusTexto(pedido.status)}\n` +
+              `Total: R$ ${pedido.total.toFixed(2)}\n\n` +
+              `${getStatusMensagem(pedido.status)}`
+            )
+          }
+        } catch (error) {
+          console.error("[v0] Erro ao buscar pedido:", error)
+        }
+      }
+
+      // Se não encontrou número ou não conseguiu buscar, pedir o número
+      return (
+        "Para consultar seu pedido, por favor me informe o número do pedido. " +
+        "Você pode encontrá-lo no comprovante ou na mensagem de confirmação. 📱\n\n" +
+        "Exemplo: #12345"
+      )
+    }
+
     // Contexto do negócio (seria carregado do banco de dados)
     const contextoNegocio = `
     Você é o assistente virtual do Cartago Burger Grill, um restaurante especializado em hambúrgueres artesanais.
@@ -234,6 +283,7 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
     - Horário: 18h às 23h (Segunda a Domingo)
     - Delivery: Disponível via WhatsApp
     - Tempo médio de entrega: 30-45 minutos
+    - WhatsApp para pedidos: (11) 9 1234-5678
 
     CARDÁPIO PRINCIPAL:
     - Cartago Classic: R$ 18,90 (hambúrguer 150g, queijo, alface, tomate, molho especial)
@@ -242,14 +292,22 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
     - Batata Frita: R$ 12,90 (porção individual)
     - Refrigerante Lata: R$ 5,90
 
+    RASTREAMENTO DE PEDIDOS:
+    - Se o cliente perguntar sobre rastreamento, status ou localização do pedido, peça o número do pedido
+    - Explique que com o número do pedido você pode consultar o status em tempo real
+    - Seja educado e prestativo
+
     INSTRUÇÕES:
     - Seja cordial e prestativo
     - Ofereça o cardápio quando perguntado
     - Ajude com pedidos de forma clara
     - Informe sobre tempo de entrega
-    - Se não souber algo, peça para falar com atendente humano
+    - Para rastreamento, sempre peça o número do pedido
+    - Se não souber algo específico, peça para falar com atendente humano
     - Use emojis moderadamente
     - Mantenha respostas concisas mas informativas
+    - SEMPRE responda algo, nunca fique em silêncio
+    - Se não entender a pergunta, peça esclarecimento de forma educada
     `
 
     console.log("[v0] Chamando API Groq...")
@@ -270,11 +328,56 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
     })
 
     console.log("[v0] Resposta da IA recebida:", text)
+
+    if (!text || text.trim().length === 0) {
+      console.log("[v0] ⚠️ Resposta da IA vazia, usando fallback")
+      return "Desculpe, não entendi sua mensagem. Pode reformular? Estou aqui para ajudar com nosso cardápio, pedidos e informações sobre o restaurante! 😊"
+    }
+
     return text
   } catch (error) {
     console.error("[v0] Erro ao processar IA:", error)
     return "Desculpe, estou com dificuldades técnicas no momento. Um atendente humano entrará em contato em breve! 🤖"
   }
+}
+
+function getStatusEmoji(status: string): string {
+  const emojis: Record<string, string> = {
+    pendente: "⏳",
+    confirmado: "✅",
+    preparando: "👨‍🍳",
+    pronto: "🍔",
+    saiu_entrega: "🚗",
+    entregue: "✅",
+    cancelado: "❌",
+  }
+  return emojis[status] || "📦"
+}
+
+function getStatusTexto(status: string): string {
+  const textos: Record<string, string> = {
+    pendente: "Aguardando confirmação",
+    confirmado: "Pedido confirmado",
+    preparando: "Em preparação",
+    pronto: "Pronto para retirada/entrega",
+    saiu_entrega: "Saiu para entrega",
+    entregue: "Entregue",
+    cancelado: "Cancelado",
+  }
+  return textos[status] || "Status desconhecido"
+}
+
+function getStatusMensagem(status: string): string {
+  const mensagens: Record<string, string> = {
+    pendente: "Estamos processando seu pedido. Em breve você receberá a confirmação!",
+    confirmado: "Seu pedido foi confirmado e já está sendo preparado!",
+    preparando: "Nosso chef está preparando seu pedido com todo carinho! 👨‍🍳",
+    pronto: "Seu pedido está pronto! Se for delivery, sairá em breve. Se for retirada, pode vir buscar!",
+    saiu_entrega: "Seu pedido saiu para entrega! Chegará em breve. 🚗",
+    entregue: "Seu pedido foi entregue! Bom apetite! 🍔",
+    cancelado: "Seu pedido foi cancelado. Entre em contato conosco para mais informações.",
+  }
+  return mensagens[status] || "Entre em contato conosco para mais informações."
 }
 
 async function enviarMensagemWhatsApp(para: string, mensagem: string): Promise<boolean> {
@@ -460,20 +563,18 @@ async function salvarRespostaNoBanco(telefone: string, resposta: string) {
       .single()
 
     if (conversa) {
-      // Alterando tipo de "enviada" para "bot" para compatibilidade com interface
-      // Salvar resposta da IA
       const { error } = await supabase.from("whatsapp_mensagens").insert({
         conversa_id: conversa.id,
         message_id: `ai_${Date.now()}`,
-        tipo: "bot", // Mudança: era "enviada", agora "bot"
+        tipo: "bot",
         conteudo: resposta,
-        status: "enviada",
+        status: "pendente", // Changed from "enviada" to "pendente"
       })
 
       if (error) {
         console.error("[v0] Erro ao salvar resposta IA:", error)
       } else {
-        console.log("[v0] Resposta IA salva com sucesso")
+        console.log("[v0] Resposta IA salva com sucesso (status: pendente)")
       }
     }
   } catch (error) {
@@ -513,5 +614,38 @@ async function salvarMensagemFalha(telefone: string, mensagem: string, erro: str
     }
   } catch (error) {
     console.error("[v0] Erro ao salvar mensagem com falha:", error)
+  }
+}
+
+async function atualizarStatusMensagem(telefone: string, conteudo: string, novoStatus: string) {
+  try {
+    console.log("[v0] Atualizando status da mensagem para:", novoStatus)
+
+    // Buscar conversa existente
+    const { data: conversa } = await supabase
+      .from("whatsapp_conversas")
+      .select("id")
+      .eq("cliente_telefone", telefone)
+      .single()
+
+    if (conversa) {
+      // Update the most recent bot message with this content
+      const { error } = await supabase
+        .from("whatsapp_mensagens")
+        .update({ status: novoStatus })
+        .eq("conversa_id", conversa.id)
+        .eq("tipo", "bot")
+        .eq("conteudo", conteudo)
+        .order("created_at", { ascending: false })
+        .limit(1)
+
+      if (error) {
+        console.error("[v0] Erro ao atualizar status da mensagem:", error)
+      } else {
+        console.log("[v0] Status da mensagem atualizado para:", novoStatus)
+      }
+    }
+  } catch (error) {
+    console.error("[v0] Erro ao atualizar status da mensagem:", error)
   }
 }
