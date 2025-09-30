@@ -286,9 +286,14 @@ async function enviarMensagemWhatsApp(para: string, mensagem: string): Promise<b
     console.log("[v0] Para:", para)
     console.log("[v0] Mensagem:", mensagem)
     console.log("[v0] Token existe:", !!token)
+    console.log("[v0] 🔑 TOKEN COMPLETO (REMOVER DEPOIS):", token)
     console.log("[v0] Token primeiros 10 chars:", token?.substring(0, 10))
+    console.log("[v0] Token últimos 10 chars:", token?.substring(token.length - 10))
+    console.log("[v0] Token length:", token?.length)
     console.log("[v0] Phone ID existe:", !!phoneNumberId)
     console.log("[v0] Phone ID:", phoneNumberId)
+    console.log("[v0] ⏰ Timestamp atual:", new Date().toISOString())
+    console.log("[v0] 🔄 Process uptime:", process.uptime(), "segundos")
 
     if (!token || !phoneNumberId) {
       console.error("[v0] ❌ Tokens WhatsApp não configurados")
@@ -308,6 +313,7 @@ async function enviarMensagemWhatsApp(para: string, mensagem: string): Promise<b
 
     console.log("[v0] URL da API:", url)
     console.log("[v0] Payload completo:", JSON.stringify(payload, null, 2))
+    console.log("[v0] 🔐 Authorization header (REMOVER DEPOIS):", `Bearer ${token}`)
 
     const response = await fetch(url, {
       method: "POST",
@@ -336,6 +342,7 @@ async function enviarMensagemWhatsApp(para: string, mensagem: string): Promise<b
         if (errorData.error?.code === 190) {
           console.error("[v0] 🚨 TOKEN EXPIRADO! Você precisa gerar um novo token no Facebook Developer Console")
           console.error("[v0] 🚨 Erro:", errorData.error.message)
+          console.error("[v0] 🚨 Token que falhou (primeiros 20 chars):", token?.substring(0, 20))
           await salvarMensagemFalha(para, mensagem, `Token expirado: ${errorData.error.message}`)
         } else {
           await salvarMensagemFalha(
