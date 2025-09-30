@@ -280,7 +280,7 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
 async function enviarMensagemWhatsApp(para: string, mensagem: string): Promise<boolean> {
   try {
     const token =
-      "EAALON6v2KzMBPr5sHF7XZAdqFGNmLwZARg8yugMN6fmpJ4ZBsXLRh0sqwW1PLUBmsLhWGKE2e8FBZCZBwLGkffPRD9XLmqZBJpf4csZBGUFJYi2Mrf7WVnZCADviizlVREZCgxwR1QvYHZBe1ykbTZBjv90qJcHtvbH1bThDKwdhArCNZBLy1x8OiXztUuZCweu1azKcRkyvmZB8zM2gjnczNHK9ZAJfBuFhebRDK9ZCD2QrVgl1un0CsAwZD"
+      "EAALON6v2KzMBPkQK6TJazZBm65CHLOZB3s4n4ZBRi8L3fWe6x7D2IsxV5cIMVdbQKWIZC3ZCPvFWZB6UogZBxBZCqUIdICZBnP438gY6gdRLlkZCee8LL2k5oaKsgIv3y8BmZCdPUCFpEMwZAe1ZA2XVsk3T495c4koQwtR4AICPZCOcoKdzHDzHNENi4cNcavd3rZBxwwHibHMd2ENwHLbOTV1J7KmCKwopIjCWh8iV6wEZC3ixgKD6XxAZD"
     const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID
 
     console.log("[v0] ===== ENVIANDO MENSAGEM WHATSAPP =====")
