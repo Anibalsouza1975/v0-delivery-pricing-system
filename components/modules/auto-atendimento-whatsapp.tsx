@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -125,79 +125,41 @@ export default function AutoAtendimentoWhatsAppModule() {
 
   const pollingEnabled = useRef(true)
   const hasShownTokenError = useRef(false)
+  const isLoadingRef = useRef(false)
 
-  useEffect(() => {
-    carregarDados()
-
-    if (statusConexao === "token_expirado") {
-      console.log("[v0] Polling desabilitado - token expirado")
+  const carregarDados = useCallback(async () => {
+    if (isLoadingRef.current) {
+      console.log("[v0] ⏭️ Carregamento já em andamento, pulando...")
       return
     }
 
-    const interval = setInterval(() => {
-      // Don't poll if token is expired or polling is disabled
-      if (!pollingEnabled.current || statusConexao === "token_expirado") {
-        console.log("[v0] Polling desabilitado devido a erro de token")
-        clearInterval(interval)
-        return
-      }
-
-      console.log("[v0] Atualizando conversas automaticamente...")
-      fetch("/api/whatsapp/conversas")
-        .then((response) => response.json())
-        .then((data) => {
-          if (data.conversas) {
-            console.log("[v0] Conversas atualizadas:", data.conversas.length)
-            setConversas(data.conversas)
-            // If a conversation is selected, update it with the latest messages
-            if (conversaSelecionada) {
-              const updatedConversation = data.conversas.find((conv: Conversa) => conv.id === conversaSelecionada.id)
-              if (updatedConversation) {
-                setConversaSelecionada(updatedConversation)
-              }
-            }
-          }
-        })
-        .catch((error) => {
-          console.error("[v0] Erro na atualização automática:", error)
-          pollingEnabled.current = false
-          clearInterval(interval)
-        })
-    }, 30000) // Increased to 30 seconds to reduce API calls
-
-    return () => clearInterval(interval)
-  }, [conversaSelecionada, statusConexao]) // Added statusConexao to dependencies
-
-  const carregarDados = async () => {
     try {
-      setCarregandoDados(true)
-
-      console.log("[v0] Carregando dados do WhatsApp...")
+      isLoadingRef.current = true
+      console.log("[v0] 🔄 Iniciando carregamento de dados...")
 
       if (statusConexao === "token_expirado" && hasShownTokenError.current) {
-        console.log("[v0] Pulando verificação de API - token já conhecido como expirado")
+        console.log("[v0] ⚠️ Token expirado - carregando apenas conversas do banco")
 
-        // Only load conversations from database
         const conversasResponse = await fetch("/api/whatsapp/conversas")
         if (conversasResponse.ok) {
-          const { conversas } = await conversasResponse.json()
-          console.log("[v0] Conversas recebidas:", conversas?.length || 0)
-          setConversas(conversas || [])
-          if (conversaSelecionada) {
-            const updatedConversation = conversas.find((conv: Conversa) => conv.id === conversaSelecionada.id)
-            if (updatedConversation) {
-              setConversaSelecionada(updatedConversation)
-            }
-          }
+          const { conversas: conversasData } = await conversasResponse.json()
+          console.log("[v0] ✅ Conversas carregadas:", conversasData?.length || 0)
+          setConversas(conversasData || [])
+        } else {
+          console.log("[v0] ❌ Erro ao carregar conversas:", conversasResponse.status)
         }
 
+        console.log("[v0] ✅ Carregamento finalizado (modo token expirado)")
         setCarregandoDados(false)
+        isLoadingRef.current = false
         return
       }
 
+      console.log("[v0] 📡 Buscando configuração da API...")
       const configResponse = await fetch("/api/whatsapp/config")
       if (configResponse.ok) {
         const { config } = await configResponse.json()
+        console.log("[v0] ✅ Configuração recebida")
         if (config) {
           setConfiguracao({
             ativo: config.ativo,
@@ -211,6 +173,7 @@ export default function AutoAtendimentoWhatsAppModule() {
           })
 
           if (config.token_error) {
+            console.log("[v0] ⚠️ Token error detectado na config")
             setStatusConexao("token_expirado")
             setTokenError(config.token_error)
             pollingEnabled.current = false
@@ -219,43 +182,100 @@ export default function AutoAtendimentoWhatsAppModule() {
               hasShownTokenError.current = true
             }
           } else {
+            console.log("[v0] ✅ Token válido")
             setStatusConexao(config.status_conexao || "desconectado")
             setTokenError(null)
             hasShownTokenError.current = false
           }
         }
+      } else {
+        console.log("[v0] ❌ Erro ao buscar configuração:", configResponse.status)
       }
 
-      console.log("[v0] Buscando conversas...")
+      console.log("[v0] 💬 Buscando conversas...")
       const conversasResponse = await fetch("/api/whatsapp/conversas")
       if (conversasResponse.ok) {
-        const { conversas } = await conversasResponse.json()
-        console.log("[v0] Conversas recebidas:", conversas?.length || 0)
-        console.log("[v0] Dados das conversas:", conversas)
-        setConversas(conversas || [])
-        // If a conversation is selected, update it with the latest messages
-        if (conversaSelecionada) {
-          const updatedConversation = conversas.find((conv: Conversa) => conv.id === conversaSelecionada.id)
-          if (updatedConversation) {
-            setConversaSelecionada(updatedConversation)
-          }
-        }
+        const { conversas: conversasData } = await conversasResponse.json()
+        console.log("[v0] ✅ Conversas recebidas:", conversasData?.length || 0)
+        setConversas(conversasData || [])
       } else {
-        console.error("[v0] Erro ao carregar conversas:", conversasResponse.status)
+        console.error("[v0] ❌ Erro ao carregar conversas:", conversasResponse.status)
       }
 
+      console.log("[v0] 📊 Buscando métricas...")
       const metricasResponse = await fetch("/api/whatsapp/metricas")
       if (metricasResponse.ok) {
-        const { metricas } = await metricasResponse.json()
-        setMetricas(metricas)
+        const { metricas: metricasData } = await metricasResponse.json()
+        console.log("[v0] ✅ Métricas recebidas")
+        setMetricas(metricasData)
+      } else {
+        console.log("[v0] ❌ Erro ao buscar métricas:", metricasResponse.status)
       }
+
+      console.log("[v0] ✅ Carregamento completo finalizado")
     } catch (error) {
-      console.error("[v0] Erro ao carregar dados WhatsApp:", error)
+      console.error("[v0] ❌ Erro fatal ao carregar dados WhatsApp:", error)
       pollingEnabled.current = false
     } finally {
+      console.log("[v0] 🏁 Finalizando carregamento (setando loading = false)")
       setCarregandoDados(false)
+      isLoadingRef.current = false
     }
-  }
+  }, [statusConexao]) // Removed conversaSelecionada from dependencies
+
+  useEffect(() => {
+    console.log("[v0] 🚀 Componente montado - iniciando carregamento inicial")
+    carregarDados()
+  }, []) // Empty dependencies - runs only once
+
+  useEffect(() => {
+    if (statusConexao === "token_expirado") {
+      console.log("[v0] 🛑 Polling desabilitado - token expirado")
+      return
+    }
+
+    console.log("[v0] ⏰ Configurando polling de 30 segundos")
+    const interval = setInterval(() => {
+      if (!pollingEnabled.current || statusConexao === "token_expirado") {
+        console.log("[v0] 🛑 Polling cancelado - token expirado ou desabilitado")
+        clearInterval(interval)
+        return
+      }
+
+      console.log("[v0] 🔄 Polling: atualizando conversas...")
+      fetch("/api/whatsapp/conversas")
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.conversas) {
+            console.log("[v0] ✅ Polling: conversas atualizadas:", data.conversas.length)
+            setConversas(data.conversas)
+          }
+        })
+        .catch((error) => {
+          console.error("[v0] ❌ Polling: erro na atualização:", error)
+          pollingEnabled.current = false
+          clearInterval(interval)
+        })
+    }, 30000)
+
+    return () => {
+      console.log("[v0] 🧹 Limpando intervalo de polling")
+      clearInterval(interval)
+    }
+  }, [statusConexao])
+
+  useEffect(() => {
+    if (conversaSelecionada) {
+      console.log("[v0] 🔄 Atualizando conversa selecionada com novos dados")
+      const updatedConversation = conversas.find((conv) => conv.id === conversaSelecionada.id)
+      if (updatedConversation) {
+        console.log("[v0] ✅ Conversa selecionada atualizada")
+        setConversaSelecionada(updatedConversation)
+      } else {
+        console.log("[v0] ⚠️ Conversa selecionada não encontrada na lista")
+      }
+    }
+  }, [conversas]) // Only depends on conversas array
 
   const handleSalvarConfiguracao = async () => {
     try {
@@ -794,6 +814,7 @@ Verifique o console para mais detalhes.`)
   }
 
   if (carregandoDados) {
+    console.log("[v0] ⏳ Renderizando tela de loading...")
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -802,6 +823,7 @@ Verifique o console para mais detalhes.`)
     )
   }
 
+  console.log("[v0] 🎨 Renderizando componente principal")
   return (
     <div className="space-y-6">
       {/* Header com Status */}

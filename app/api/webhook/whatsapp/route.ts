@@ -294,6 +294,7 @@ async function enviarMensagemWhatsApp(para: string, mensagem: string): Promise<b
       console.error("[v0] ❌ Tokens WhatsApp não configurados")
       console.error("[v0] - WHATSAPP_ACCESS_TOKEN:", !!token)
       console.error("[v0] - WHATSAPP_PHONE_NUMBER_ID:", !!phoneNumberId)
+      await salvarMensagemFalha(para, mensagem, "Token não configurado")
       return false
     }
 
@@ -331,8 +332,21 @@ async function enviarMensagemWhatsApp(para: string, mensagem: string): Promise<b
       try {
         const errorData = JSON.parse(responseText)
         console.error("[v0] Erro detalhado:", JSON.stringify(errorData, null, 2))
+
+        if (errorData.error?.code === 190) {
+          console.error("[v0] 🚨 TOKEN EXPIRADO! Você precisa gerar um novo token no Facebook Developer Console")
+          console.error("[v0] 🚨 Erro:", errorData.error.message)
+          await salvarMensagemFalha(para, mensagem, `Token expirado: ${errorData.error.message}`)
+        } else {
+          await salvarMensagemFalha(
+            para,
+            mensagem,
+            `Erro ${response.status}: ${errorData.error?.message || responseText}`,
+          )
+        }
       } catch (e) {
         console.error("[v0] Não foi possível parsear erro como JSON")
+        await salvarMensagemFalha(para, mensagem, `Erro ${response.status}: ${responseText}`)
       }
 
       return false
@@ -352,6 +366,11 @@ async function enviarMensagemWhatsApp(para: string, mensagem: string): Promise<b
   } catch (error) {
     console.error("[v0] ❌ Erro crítico na API WhatsApp:", error)
     console.error("[v0] Stack trace:", error instanceof Error ? error.stack : "No stack trace")
+    await salvarMensagemFalha(
+      para,
+      mensagem,
+      `Erro crítico: ${error instanceof Error ? error.message : "Unknown error"}`,
+    )
     return false
   }
 }
@@ -453,5 +472,40 @@ async function salvarRespostaNoBanco(telefone: string, resposta: string) {
     }
   } catch (error) {
     console.error("[v0] Erro ao salvar resposta IA:", error)
+  }
+}
+
+async function salvarMensagemFalha(telefone: string, mensagem: string, erro: string) {
+  try {
+    console.log("[v0] 💾 Salvando mensagem com falha para retry posterior")
+    console.log("[v0] Telefone:", telefone)
+    console.log("[v0] Erro:", erro)
+
+    // Buscar conversa existente
+    const { data: conversa } = await supabase
+      .from("whatsapp_conversas")
+      .select("id")
+      .eq("cliente_telefone", telefone)
+      .single()
+
+    if (conversa) {
+      // Salvar mensagem com status de falha
+      const { error } = await supabase.from("whatsapp_mensagens").insert({
+        conversa_id: conversa.id,
+        message_id: `failed_${Date.now()}`,
+        tipo: "bot",
+        conteudo: mensagem,
+        status: "falha", // Mark as failed
+        metadata: { erro, timestamp: new Date().toISOString() },
+      })
+
+      if (error) {
+        console.error("[v0] Erro ao salvar mensagem com falha:", error)
+      } else {
+        console.log("[v0] ✅ Mensagem com falha salva para retry posterior")
+      }
+    }
+  } catch (error) {
+    console.error("[v0] Erro ao salvar mensagem com falha:", error)
   }
 }
