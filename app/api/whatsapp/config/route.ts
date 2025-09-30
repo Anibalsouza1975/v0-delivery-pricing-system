@@ -7,7 +7,7 @@ export async function GET() {
 
     const WHATSAPP_PHONE_NUMBER_ID =
       process.env.WHATSAPP_PHONE_NUMBER_ID === "temporario"
-        ? "801264823070601"
+        ? "801264823070601" // Revertendo para o número de teste até o novo número ser aprovado
         : process.env.WHATSAPP_PHONE_NUMBER_ID || "801264823070601"
 
     const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN

@@ -11,14 +11,14 @@ export async function POST(request: NextRequest) {
       object: "whatsapp_business_account",
       entry: [
         {
-          id: "801264823070601",
+          id: "131553161997280",
           changes: [
             {
               value: {
                 messaging_product: "whatsapp",
                 metadata: {
-                  display_phone_number: "15551850889",
-                  phone_number_id: "801264823070601",
+                  display_phone_number: "554195336065",
+                  phone_number_id: "774222885783648",
                 },
                 messages: [
                   {
