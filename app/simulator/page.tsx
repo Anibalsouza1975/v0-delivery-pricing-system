@@ -43,17 +43,17 @@ export default function SimulatorPage() {
 
       const data = await response.json()
 
-      // Buscar a resposta do bot do banco de dados
       const conversasResponse = await fetch("/api/whatsapp/conversas")
-      const conversas = await conversasResponse.json()
+      const conversasData = await conversasResponse.json()
+      const conversas = conversasData.conversas || []
 
       // Encontrar a conversa atual
-      const currentConversation = conversas.find((c: any) => c.numero_telefone === phone)
+      const currentConversation = conversas.find((c: any) => c.telefone === phone)
 
-      if (currentConversation?.ultima_resposta) {
+      if (currentConversation?.ultimaMensagem) {
         const botMessage: Message = {
           from: "bot",
-          text: currentConversation.ultima_resposta,
+          text: currentConversation.ultimaMensagem,
           timestamp: new Date(),
         }
         setMessages((prev) => [...prev, botMessage])
