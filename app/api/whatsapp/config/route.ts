@@ -9,7 +9,9 @@ export async function GET() {
       process.env.WHATSAPP_PHONE_NUMBER_ID === "temporario"
         ? "801264823070601"
         : process.env.WHATSAPP_PHONE_NUMBER_ID || "801264823070601"
-    const WHATSAPP_ACCESS_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN
+
+    const WHATSAPP_ACCESS_TOKEN =
+      "EAALON6v2KzMBPr5sHF7XZAdqFGNmLwZARg8yugMN6fmpJ4ZBsXLRh0sqwW1PLUBmsLhWGKE2e8FBZCZBwLGkffPRD9XLmqZBJpf4csZBGUFJYi2Mrf7WVnZCADviizlVREZCgxwR1QvYHZBe1ykbTZBjv90qJcHtvbH1bThDKwdhArCNZBLy1x8OiXztUuZCweu1azKcRkyvmZB8zM2gjnczNHK9ZAJfBuFhebRDK9ZCD2QrVgl1un0CsAwZD"
     const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN
 
     console.log("[v0] WhatsApp Phone Number ID:", WHATSAPP_PHONE_NUMBER_ID)

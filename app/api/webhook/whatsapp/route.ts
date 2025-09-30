@@ -279,21 +279,20 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
 
 async function enviarMensagemWhatsApp(para: string, mensagem: string): Promise<boolean> {
   try {
-    const token = process.env.WHATSAPP_ACCESS_TOKEN
+    const token =
+      "EAALON6v2KzMBPr5sHF7XZAdqFGNmLwZARg8yugMN6fmpJ4ZBsXLRh0sqwW1PLUBmsLhWGKE2e8FBZCZBwLGkffPRD9XLmqZBJpf4csZBGUFJYi2Mrf7WVnZCADviizlVREZCgxwR1QvYHZBe1ykbTZBjv90qJcHtvbH1bThDKwdhArCNZBLy1x8OiXztUuZCweu1azKcRkyvmZB8zM2gjnczNHK9ZAJfBuFhebRDK9ZCD2QrVgl1un0CsAwZD"
     const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID
 
     console.log("[v0] ===== ENVIANDO MENSAGEM WHATSAPP =====")
     console.log("[v0] Para:", para)
     console.log("[v0] Mensagem:", mensagem)
     console.log("[v0] Token existe:", !!token)
-    console.log("[v0] 🔑 TOKEN COMPLETO (REMOVER DEPOIS):", token)
+    console.log("[v0] 🔑 TOKEN HARDCODED ATIVO!")
     console.log("[v0] Token primeiros 10 chars:", token?.substring(0, 10))
     console.log("[v0] Token últimos 10 chars:", token?.substring(token.length - 10))
     console.log("[v0] Token length:", token?.length)
     console.log("[v0] Phone ID existe:", !!phoneNumberId)
     console.log("[v0] Phone ID:", phoneNumberId)
-    console.log("[v0] ⏰ Timestamp atual:", new Date().toISOString())
-    console.log("[v0] 🔄 Process uptime:", process.uptime(), "segundos")
 
     if (!token || !phoneNumberId) {
       console.error("[v0] ❌ Tokens WhatsApp não configurados")
