@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 
 export async function POST(request: NextRequest) {
   try {
-    const { to, message } = await request.json()
+    const { to, message, tipo = "bot" } = await request.json()
 
     if (!process.env.WHATSAPP_ACCESS_TOKEN || !process.env.WHATSAPP_PHONE_NUMBER_ID) {
       return NextResponse.json({ error: "WhatsApp não configurado" }, { status: 400 })
@@ -42,10 +42,9 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (conversa) {
-      // Salvar mensagem enviada
       await supabase.from("whatsapp_mensagens").insert({
         conversa_id: conversa.id,
-        tipo: "bot",
+        tipo: tipo, // Use the tipo parameter from request
         conteudo: message,
       })
 

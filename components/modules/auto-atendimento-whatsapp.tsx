@@ -119,6 +119,10 @@ export default function AutoAtendimentoWhatsAppModule() {
   const [testingWebhookConfig, setTestingWebhookConfig] = useState(false)
   const [updatingWebhookUrl, setUpdatingWebhookUrl] = useState(false)
 
+  const [conversaSelecionada, setConversaSelecionada] = useState<Conversa | null>(null)
+  const [mensagemResposta, setMensagemResposta] = useState("")
+  const [enviandoMensagem, setEnviandoMensagem] = useState(false)
+
   useEffect(() => {
     carregarDados()
 
@@ -131,13 +135,20 @@ export default function AutoAtendimentoWhatsAppModule() {
           if (data.conversas) {
             console.log("[v0] Conversas atualizadas:", data.conversas.length)
             setConversas(data.conversas)
+            // If a conversation is selected, update it with the latest messages
+            if (conversaSelecionada) {
+              const updatedConversation = data.conversas.find((conv: Conversa) => conv.id === conversaSelecionada.id)
+              if (updatedConversation) {
+                setConversaSelecionada(updatedConversation)
+              }
+            }
           }
         })
         .catch((error) => console.error("[v0] Erro na atualização automática:", error))
     }, 10000) // Atualizar a cada 10 segundos
 
     return () => clearInterval(interval)
-  }, [])
+  }, [conversaSelecionada]) // Add conversaSelecionada to dependencies
 
   const carregarDados = async () => {
     try {
@@ -173,6 +184,13 @@ export default function AutoAtendimentoWhatsAppModule() {
         console.log("[v0] Conversas recebidas:", conversas?.length || 0)
         console.log("[v0] Dados das conversas:", conversas)
         setConversas(conversas || [])
+        // If a conversation is selected, update it with the latest messages
+        if (conversaSelecionada) {
+          const updatedConversation = conversas.find((conv: Conversa) => conv.id === conversaSelecionada.id)
+          if (updatedConversation) {
+            setConversaSelecionada(updatedConversation)
+          }
+        }
       } else {
         console.error("[v0] Erro ao carregar conversas:", conversasResponse.status)
       }
@@ -652,6 +670,80 @@ Verifique o console para mais detalhes.`)
     }
   }
 
+  const handleEnviarResposta = async () => {
+    if (!mensagemResposta.trim() || !conversaSelecionada) {
+      alert("Digite uma mensagem para enviar")
+      return
+    }
+
+    try {
+      setEnviandoMensagem(true)
+
+      const response = await fetch("/api/whatsapp/send-message", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          to: conversaSelecionada.telefone,
+          message: mensagemResposta.trim(),
+          tipo: "atendente", // Mark as manual reply from agent
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        // Clear input
+        setMensagemResposta("")
+
+        // Update conversation with new message
+        const novaMensagem: Mensagem = {
+          id: data.messageId || `temp_${Date.now()}`,
+          tipo: "atendente",
+          conteudo: mensagemResposta.trim(),
+          timestamp: new Date(),
+        }
+
+        setConversaSelecionada((prev) => {
+          if (!prev) return null
+          return {
+            ...prev,
+            mensagens: [...prev.mensagens, novaMensagem],
+            ultimaMensagem: mensagemResposta.trim(),
+            timestamp: new Date(),
+          }
+        })
+
+        // Update conversations list
+        setConversas((prev) =>
+          prev.map((conv) =>
+            conv.id === conversaSelecionada.id
+              ? {
+                  ...conv,
+                  mensagens: [...conv.mensagens, novaMensagem],
+                  ultimaMensagem: mensagemResposta.trim(),
+                  timestamp: new Date(),
+                }
+              : conv,
+          ),
+        )
+
+        // Reload conversations to get updated data
+        setTimeout(() => {
+          carregarDados()
+        }, 1000)
+      } else {
+        alert(`Erro ao enviar mensagem: ${data.error}`)
+      }
+    } catch (error) {
+      console.error("[v0] Erro ao enviar resposta:", error)
+      alert("Erro ao enviar mensagem. Tente novamente.")
+    } finally {
+      setEnviandoMensagem(false)
+    }
+  }
+
   if (carregandoDados) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -862,54 +954,174 @@ Verifique o console para mais detalhes.`)
 
         {/* Conversas Tab */}
         <TabsContent value="conversas" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Conversas Recentes</CardTitle>
-              <CardDescription>Acompanhe todas as conversas em tempo real</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {conversas.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Nenhuma conversa encontrada</p>
-                    <p className="text-sm">As conversas aparecerão aqui quando os clientes enviarem mensagens</p>
-                  </div>
-                ) : (
-                  conversas.map((conversa) => (
-                    <div key={conversa.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                          <Phone className="h-4 w-4 text-primary" />
-                        </div>
-                        <div>
-                          <p className="font-medium">{conversa.cliente}</p>
-                          <p className="text-sm text-muted-foreground">{conversa.telefone}</p>
-                          <p className="text-sm">{conversa.ultimaMensagem}</p>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card className="lg:col-span-1">
+              <CardHeader>
+                <CardTitle>Conversas Recentes</CardTitle>
+                <CardDescription>Selecione uma conversa para responder</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {conversas.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>Nenhuma conversa encontrada</p>
+                      <p className="text-sm">As conversas aparecerão aqui quando os clientes enviarem mensagens</p>
+                    </div>
+                  ) : (
+                    conversas.map((conversa) => (
+                      <div
+                        key={conversa.id}
+                        onClick={() => setConversaSelecionada(conversa)}
+                        className={`p-3 border rounded-lg cursor-pointer transition-colors hover:bg-accent ${
+                          conversaSelecionada?.id === conversa.id ? "bg-accent border-primary" : ""
+                        }`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-2 flex-1">
+                            <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center shrink-0">
+                              <Phone className="h-4 w-4 text-primary" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium truncate">{conversa.cliente}</p>
+                              <p className="text-xs text-muted-foreground truncate">{conversa.telefone}</p>
+                              <p className="text-sm truncate">{conversa.ultimaMensagem}</p>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0 ml-2">
+                            <Badge
+                              variant={
+                                conversa.status === "ativa"
+                                  ? "default"
+                                  : conversa.status === "aguardando"
+                                    ? "secondary"
+                                    : "outline"
+                              }
+                              className="text-xs"
+                            >
+                              {conversa.status}
+                            </Badge>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {new Date(conversa.timestamp).toLocaleTimeString()}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <Badge
-                          variant={
-                            conversa.status === "ativa"
-                              ? "default"
-                              : conversa.status === "aguardando"
-                                ? "secondary"
-                                : "outline"
-                          }
-                        >
-                          {conversa.status}
-                        </Badge>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {new Date(conversa.timestamp).toLocaleTimeString()}
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span>
+                    {conversaSelecionada ? `Chat com ${conversaSelecionada.cliente}` : "Selecione uma conversa"}
+                  </span>
+                  {conversaSelecionada && <Badge variant="outline">{conversaSelecionada.telefone}</Badge>}
+                </CardTitle>
+                <CardDescription>
+                  {conversaSelecionada
+                    ? "Digite sua mensagem abaixo para responder"
+                    : "Clique em uma conversa à esquerda para começar"}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {conversaSelecionada ? (
+                  <div className="space-y-4">
+                    {/* Messages area */}
+                    <div className="border rounded-lg p-4 h-[400px] overflow-y-auto space-y-3 bg-muted/20">
+                      {conversaSelecionada.mensagens.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                          <p>Nenhuma mensagem ainda</p>
+                        </div>
+                      ) : (
+                        conversaSelecionada.mensagens.map((mensagem) => (
+                          <div
+                            key={mensagem.id}
+                            className={`flex ${mensagem.tipo === "cliente" ? "justify-start" : "justify-end"}`}
+                          >
+                            <div
+                              className={`max-w-[70%] rounded-lg p-3 ${
+                                mensagem.tipo === "cliente"
+                                  ? "bg-white border"
+                                  : mensagem.tipo === "atendente"
+                                    ? "bg-blue-500 text-white"
+                                    : "bg-green-500 text-white"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-xs font-semibold">
+                                  {mensagem.tipo === "cliente"
+                                    ? conversaSelecionada.cliente
+                                    : mensagem.tipo === "atendente"
+                                      ? "Você"
+                                      : "Bot"}
+                                </span>
+                                <span
+                                  className={`text-xs ${mensagem.tipo === "cliente" ? "text-muted-foreground" : "opacity-70"}`}
+                                >
+                                  {new Date(mensagem.timestamp).toLocaleTimeString()}
+                                </span>
+                              </div>
+                              <p className="text-sm whitespace-pre-wrap">{mensagem.conteudo}</p>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Reply input area */}
+                    <div className="space-y-2">
+                      <Label htmlFor="mensagemResposta">Sua resposta</Label>
+                      <div className="flex gap-2">
+                        <Textarea
+                          id="mensagemResposta"
+                          value={mensagemResposta}
+                          onChange={(e) => setMensagemResposta(e.target.value)}
+                          placeholder="Digite sua mensagem aqui..."
+                          rows={3}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                              e.preventDefault()
+                              handleEnviarResposta()
+                            }
+                          }}
+                          disabled={enviandoMensagem}
+                        />
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <p className="text-xs text-muted-foreground">
+                          Pressione Enter para enviar, Shift+Enter para nova linha
                         </p>
+                        <Button onClick={handleEnviarResposta} disabled={enviandoMensagem || !mensagemResposta.trim()}>
+                          {enviandoMensagem ? (
+                            <>
+                              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                              Enviando...
+                            </>
+                          ) : (
+                            <>
+                              <MessageCircle className="h-4 w-4 mr-2" />
+                              Enviar Mensagem
+                            </>
+                          )}
+                        </Button>
                       </div>
                     </div>
-                  ))
+                  </div>
+                ) : (
+                  <div className="text-center py-16 text-muted-foreground">
+                    <MessageSquare className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                    <p className="text-lg font-medium">Nenhuma conversa selecionada</p>
+                    <p className="text-sm">Selecione uma conversa à esquerda para começar a responder</p>
+                  </div>
                 )}
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         {/* Configuração Tab */}

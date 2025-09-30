@@ -34,25 +34,50 @@ export async function GET() {
         console.log("[v0] Resposta da API WhatsApp:", response.status)
 
         if (response.ok) {
-          const data = await response.json()
-          console.log("[v0] Dados da API WhatsApp:", data)
-          whatsappApiStatus = "conectado"
+          try {
+            const data = await response.json()
+            console.log("[v0] Dados da API WhatsApp:", data)
+            whatsappApiStatus = "conectado"
+          } catch (jsonError) {
+            console.log("[v0] Resposta não é JSON válido, mas status é OK")
+            whatsappApiStatus = "conectado"
+          }
         } else {
-          const errorData = await response.json()
-          console.log("[v0] Erro da API WhatsApp:", errorData)
+          // Check if response is JSON before parsing
+          const contentType = response.headers.get("content-type")
+          if (contentType && contentType.includes("application/json")) {
+            const errorData = await response.json()
+            console.log("[v0] Erro da API WhatsApp:", errorData)
 
-          if (errorData.error && errorData.error.code === 190) {
-            tokenError = {
-              type: "token_expired",
-              message: errorData.error.message,
-              code: errorData.error.code,
-              subcode: errorData.error.error_subcode,
+            if (errorData.error && errorData.error.code === 190) {
+              tokenError = {
+                type: "token_expired",
+                message: errorData.error.message,
+                code: errorData.error.code,
+                subcode: errorData.error.error_subcode,
+              }
+              whatsappApiStatus = "token_expirado"
             }
-            whatsappApiStatus = "token_expirado"
+          } else {
+            // Handle non-JSON error responses (like rate limiting)
+            const errorText = await response.text()
+            console.log("[v0] Erro da API WhatsApp (texto):", errorText)
+
+            if (response.status === 429) {
+              whatsappApiStatus = "rate_limited"
+              tokenError = {
+                type: "rate_limited",
+                message: "Muitas requisições. Aguarde alguns minutos.",
+                code: 429,
+              }
+            } else {
+              whatsappApiStatus = "erro"
+            }
           }
         }
       } catch (error) {
         console.log("[v0] Erro ao testar conexão WhatsApp API:", error)
+        whatsappApiStatus = "erro"
       }
     }
 
