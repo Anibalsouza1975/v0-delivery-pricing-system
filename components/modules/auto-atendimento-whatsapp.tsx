@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -123,11 +123,25 @@ export default function AutoAtendimentoWhatsAppModule() {
   const [mensagemResposta, setMensagemResposta] = useState("")
   const [enviandoMensagem, setEnviandoMensagem] = useState(false)
 
+  const pollingEnabled = useRef(true)
+  const hasShownTokenError = useRef(false)
+
   useEffect(() => {
     carregarDados()
 
-    // Configurar atualização automática das conversas
+    if (statusConexao === "token_expirado") {
+      console.log("[v0] Polling desabilitado - token expirado")
+      return
+    }
+
     const interval = setInterval(() => {
+      // Don't poll if token is expired or polling is disabled
+      if (!pollingEnabled.current || statusConexao === "token_expirado") {
+        console.log("[v0] Polling desabilitado devido a erro de token")
+        clearInterval(interval)
+        return
+      }
+
       console.log("[v0] Atualizando conversas automaticamente...")
       fetch("/api/whatsapp/conversas")
         .then((response) => response.json())
@@ -144,11 +158,15 @@ export default function AutoAtendimentoWhatsAppModule() {
             }
           }
         })
-        .catch((error) => console.error("[v0] Erro na atualização automática:", error))
-    }, 10000) // Atualizar a cada 10 segundos
+        .catch((error) => {
+          console.error("[v0] Erro na atualização automática:", error)
+          pollingEnabled.current = false
+          clearInterval(interval)
+        })
+    }, 30000) // Increased to 30 seconds to reduce API calls
 
     return () => clearInterval(interval)
-  }, [conversaSelecionada]) // Add conversaSelecionada to dependencies
+  }, [conversaSelecionada, statusConexao]) // Added statusConexao to dependencies
 
   const carregarDados = async () => {
     try {
@@ -156,7 +174,27 @@ export default function AutoAtendimentoWhatsAppModule() {
 
       console.log("[v0] Carregando dados do WhatsApp...")
 
-      // Carregar configuração
+      if (statusConexao === "token_expirado" && hasShownTokenError.current) {
+        console.log("[v0] Pulando verificação de API - token já conhecido como expirado")
+
+        // Only load conversations from database
+        const conversasResponse = await fetch("/api/whatsapp/conversas")
+        if (conversasResponse.ok) {
+          const { conversas } = await conversasResponse.json()
+          console.log("[v0] Conversas recebidas:", conversas?.length || 0)
+          setConversas(conversas || [])
+          if (conversaSelecionada) {
+            const updatedConversation = conversas.find((conv: Conversa) => conv.id === conversaSelecionada.id)
+            if (updatedConversation) {
+              setConversaSelecionada(updatedConversation)
+            }
+          }
+        }
+
+        setCarregandoDados(false)
+        return
+      }
+
       const configResponse = await fetch("/api/whatsapp/config")
       if (configResponse.ok) {
         const { config } = await configResponse.json()
@@ -171,12 +209,23 @@ export default function AutoAtendimentoWhatsAppModule() {
             },
             respostasAutomaticas: config.respostas_automaticas,
           })
-          setStatusConexao(config.status_conexao || "desconectado")
-          setTokenError(config.token_error || null)
+
+          if (config.token_error) {
+            setStatusConexao("token_expirado")
+            setTokenError(config.token_error)
+            pollingEnabled.current = false
+
+            if (!hasShownTokenError.current) {
+              hasShownTokenError.current = true
+            }
+          } else {
+            setStatusConexao(config.status_conexao || "desconectado")
+            setTokenError(null)
+            hasShownTokenError.current = false
+          }
         }
       }
 
-      // Carregar conversas
       console.log("[v0] Buscando conversas...")
       const conversasResponse = await fetch("/api/whatsapp/conversas")
       if (conversasResponse.ok) {
@@ -195,7 +244,6 @@ export default function AutoAtendimentoWhatsAppModule() {
         console.error("[v0] Erro ao carregar conversas:", conversasResponse.status)
       }
 
-      // Carregar métricas
       const metricasResponse = await fetch("/api/whatsapp/metricas")
       if (metricasResponse.ok) {
         const { metricas } = await metricasResponse.json()
@@ -203,6 +251,7 @@ export default function AutoAtendimentoWhatsAppModule() {
       }
     } catch (error) {
       console.error("[v0] Erro ao carregar dados WhatsApp:", error)
+      pollingEnabled.current = false
     } finally {
       setCarregandoDados(false)
     }
