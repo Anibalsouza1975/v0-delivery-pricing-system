@@ -118,6 +118,8 @@ export default function AutoAtendimentoWhatsAppModule() {
   const [webhookDiagnostics, setWebhookDiagnostics] = useState<any>(null)
   const [testingWebhookConfig, setTestingWebhookConfig] = useState(false)
   const [updatingWebhookUrl, setUpdatingWebhookUrl] = useState(false)
+  const [newToken, setNewToken] = useState("")
+  const [savingToken, setSavingToken] = useState(false)
 
   const [conversaSelecionada, setConversaSelecionada] = useState<Conversa | null>(null)
   const [mensagemResposta, setMensagemResposta] = useState("")
@@ -438,6 +440,60 @@ Verifique o console para mais detalhes.`)
     }
   }
 
+  const handleSaveToken = async () => {
+    if (!newToken.trim()) {
+      alert("Por favor, cole o novo token primeiro")
+      return
+    }
+
+    try {
+      setSavingToken(true)
+
+      // First, test if the token is valid
+      const testResponse = await fetch("/api/whatsapp/update-token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ newToken: newToken.trim() }),
+      })
+      const testData = await testResponse.json()
+
+      if (!testData.success) {
+        alert(`Token inválido: ${testData.error}`)
+        return
+      }
+
+      // If valid, save to database
+      const saveResponse = await fetch("/api/whatsapp/config", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ token: newToken.trim() }),
+      })
+      const saveData = await saveResponse.json()
+
+      if (saveData.success) {
+        alert("Token salvo com sucesso! O sistema já está usando o novo token.")
+        setNewToken("")
+        setStatusConexao("conectado")
+        setTokenError(null)
+        // Reload data to update status
+        setTimeout(() => {
+          carregarDados()
+        }, 1000)
+      } else {
+        alert(`Erro ao salvar token: ${saveData.error}`)
+      }
+    } catch (error) {
+      console.error("[v0] Erro ao salvar token:", error)
+      alert("Erro ao salvar token. Tente novamente.")
+    } finally {
+      setSavingToken(false)
+    }
+  }
+
   const handleTestNewToken = async () => {
     if (!debugToken.trim()) {
       alert("Por favor, cole o novo token primeiro")
@@ -580,7 +636,7 @@ Verifique o console para mais detalhes.`)
           </div>
           <div style="background: #dcfce7; padding: 10px; border-radius: 6px; margin-bottom: 15px;">
             <p style="margin: 0; font-size: 13px; color: #166534;">
-              <strong>💡 Alternativa:</strong> Você pode fazer o deploy para produção clicando em "Publish" no v0, assim a URL do Meta ficará correta automaticamente.
+              <strong>Alternativa:</strong> Você pode fazer o deploy para produção clicando em "Publish" no v0, assim a URL do Meta ficará correta automaticamente.
             </p>
           </div>
           <div style="display: flex; gap: 10px;">
@@ -1594,113 +1650,214 @@ Verifique o console para mais detalhes.`)
                 </CardContent>
               </Card>
 
-              {statusConexao === "token_expirado" && (
-                <Card className="border-red-200 bg-red-50">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-red-700">
-                      <AlertTriangle className="h-5 w-5" />
-                      Diagnóstico e Correção do Token
-                    </CardTitle>
-                    <CardDescription className="text-red-600">
-                      Ferramenta para verificar e testar tokens do WhatsApp Business API
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-3">
-                      <div className="flex gap-2">
-                        <Button onClick={handleDebugToken} disabled={testingToken} variant="outline">
+              <Card className={statusConexao === "token_expirado" ? "border-red-200 bg-red-50" : ""}>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-red-700">
+                    <AlertTriangle className="h-5 w-5" />
+                    Diagnóstico e Correção do Token
+                  </CardTitle>
+                  <CardDescription className="text-red-600">
+                    Ferramenta para verificar e testar tokens do WhatsApp Business API
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-3">
+                    <div className="flex gap-2">
+                      <Button onClick={handleDebugToken} disabled={testingToken} variant="outline">
+                        {testingToken ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            Verificando...
+                          </>
+                        ) : (
+                          <>
+                            <Activity className="h-4 w-4 mr-2" />
+                            Verificar Token Atual
+                          </>
+                        )}
+                      </Button>
+                    </div>
+
+                    {debugResult && (
+                      <div className="bg-white p-4 rounded border">
+                        <h4 className="font-medium mb-2">Resultado do Diagnóstico:</h4>
+                        <div className="space-y-2 text-sm">
+                          <p>
+                            <strong>Token existe:</strong> {debugResult.tokenExists ? "✅ Sim" : "❌ Não"}
+                          </p>
+                          <p>
+                            <strong>Tamanho do token:</strong> {debugResult.tokenLength} caracteres
+                          </p>
+                          <p>
+                            <strong>Preview do token:</strong>{" "}
+                            <code className="bg-gray-100 px-1 rounded">{debugResult.tokenPreview}</code>
+                          </p>
+                          <p>
+                            <strong>Status:</strong>
+                            <span
+                              className={`ml-1 ${debugResult.tokenStatus === "válido" ? "text-green-600" : "text-red-600"}`}
+                            >
+                              {debugResult.tokenStatus}
+                            </span>
+                          </p>
+                          {debugResult.errorDetails && (
+                            <div className="bg-red-50 p-2 rounded">
+                              <p>
+                                <strong>Erro:</strong>{" "}
+                                {debugResult.errorDetails.error?.message || debugResult.errorDetails.message}
+                              </p>
+                            </div>
+                          )}
+                          <p className="text-xs text-gray-500">
+                            Verificado em: {new Date(debugResult.timestamp).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      <Label htmlFor="debugToken">Testar Novo Token</Label>
+                      <div className="space-y-2">
+                        <Textarea
+                          id="debugToken"
+                          value={debugToken}
+                          onChange={(e) => setDebugToken(e.target.value)}
+                          placeholder="Cole aqui o novo token gerado no Meta for Developers..."
+                          rows={3}
+                          className="font-mono text-sm"
+                        />
+                        <Button onClick={handleTestNewToken} disabled={testingToken || !debugToken.trim()}>
                           {testingToken ? (
                             <>
                               <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                              Verificando...
+                              Testando...
                             </>
                           ) : (
                             <>
-                              <Activity className="h-4 w-4 mr-2" />
-                              Verificar Token Atual
+                              <TestTube className="h-4 w-4 mr-2" />
+                              Testar Novo Token
                             </>
                           )}
                         </Button>
                       </div>
-
-                      {debugResult && (
-                        <div className="bg-white p-4 rounded border">
-                          <h4 className="font-medium mb-2">Resultado do Diagnóstico:</h4>
-                          <div className="space-y-2 text-sm">
-                            <p>
-                              <strong>Token existe:</strong> {debugResult.tokenExists ? "✅ Sim" : "❌ Não"}
-                            </p>
-                            <p>
-                              <strong>Tamanho do token:</strong> {debugResult.tokenLength} caracteres
-                            </p>
-                            <p>
-                              <strong>Preview do token:</strong>{" "}
-                              <code className="bg-gray-100 px-1 rounded">{debugResult.tokenPreview}</code>
-                            </p>
-                            <p>
-                              <strong>Status:</strong>
-                              <span
-                                className={`ml-1 ${debugResult.tokenStatus === "válido" ? "text-green-600" : "text-red-600"}`}
-                              >
-                                {debugResult.tokenStatus}
-                              </span>
-                            </p>
-                            {debugResult.errorDetails && (
-                              <div className="bg-red-50 p-2 rounded">
-                                <p>
-                                  <strong>Erro:</strong>{" "}
-                                  {debugResult.errorDetails.error?.message || debugResult.errorDetails.message}
-                                </p>
-                              </div>
-                            )}
-                            <p className="text-xs text-gray-500">
-                              Verificado em: {new Date(debugResult.timestamp).toLocaleString()}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="space-y-2">
-                        <Label htmlFor="debugToken">Testar Novo Token</Label>
-                        <div className="space-y-2">
-                          <Textarea
-                            id="debugToken"
-                            value={debugToken}
-                            onChange={(e) => setDebugToken(e.target.value)}
-                            placeholder="Cole aqui o novo token gerado no Meta for Developers..."
-                            rows={3}
-                            className="font-mono text-sm"
-                          />
-                          <Button onClick={handleTestNewToken} disabled={testingToken || !debugToken.trim()}>
-                            {testingToken ? (
-                              <>
-                                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                                Testando...
-                              </>
-                            ) : (
-                              <>
-                                <TestTube className="h-4 w-4 mr-2" />
-                                Testar Novo Token
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-
-                      <div className="bg-blue-50 p-3 rounded">
-                        <p className="text-sm font-medium text-blue-900 mb-1">Como usar:</p>
-                        <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
-                          <li>Clique em "Verificar Token Atual" para ver o status do token</li>
-                          <li>Gere um novo token no Meta for Developers</li>
-                          <li>Cole o novo token no campo acima</li>
-                          <li>Clique em "Testar Novo Token" para verificar se é válido</li>
-                          <li>Se válido, atualize a variável WHATSAPP_ACCESS_TOKEN no projeto</li>
-                        </ol>
-                      </div>
                     </div>
-                  </CardContent>
-                </Card>
-              )}
+
+                    <div className="bg-blue-50 p-3 rounded">
+                      <p className="text-sm font-medium text-blue-900 mb-1">Como usar:</p>
+                      <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
+                        <li>Clique em "Verificar Token Atual" para ver o status do token</li>
+                        <li>Gere um novo token no Meta for Developers</li>
+                        <li>Cole o novo token no campo acima</li>
+                        <li>Clique em "Testar Novo Token" para verificar se é válido</li>
+                        <li>Se válido, atualize a variável WHATSAPP_ACCESS_TOKEN no projeto</li>
+                      </ol>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </CardContent>
+          </Card>
+
+          <Card className={statusConexao === "token_expirado" ? "border-red-200 bg-red-50" : ""}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                Gerenciar Token de Acesso WhatsApp
+              </CardTitle>
+              <CardDescription>
+                Atualize o token de acesso do WhatsApp Business API diretamente no sistema
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <p className="text-sm font-medium text-blue-900 mb-2">Como obter um novo token:</p>
+                  <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
+                    <li>
+                      Acesse{" "}
+                      <a
+                        href="https://developers.facebook.com/apps"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline inline-flex items-center gap-1"
+                      >
+                        Meta for Developers <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </li>
+                    <li>Vá para seu app WhatsApp Business</li>
+                    <li>Na seção "WhatsApp" → "Configuração da API"</li>
+                    <li>Clique em "Gerar token de acesso"</li>
+                    <li>Copie o novo token e cole abaixo</li>
+                  </ol>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="newToken">Novo Token de Acesso</Label>
+                  <Textarea
+                    id="newToken"
+                    value={newToken}
+                    onChange={(e) => setNewToken(e.target.value)}
+                    placeholder="Cole aqui o novo token gerado no Meta for Developers...
+Exemplo: EAALON6v2KzMBPrZCQvBlndCVOe1s4EMZCu6IbXJJUU1lp9ANK7X1eZADK5Ap187..."
+                    rows={4}
+                    className="font-mono text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    O token será validado e salvo automaticamente no sistema. Não é necessário atualizar variáveis de
+                    ambiente manualmente.
+                  </p>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button onClick={handleSaveToken} disabled={savingToken || !newToken.trim()} className="flex-1">
+                    {savingToken ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Salvando...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        Salvar Token
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setNewToken("")
+                    }}
+                    disabled={savingToken}
+                  >
+                    Limpar
+                  </Button>
+                </div>
+
+                {statusConexao === "conectado" && (
+                  <div className="bg-green-50 p-3 rounded border border-green-200">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <p className="text-sm font-medium text-green-900">Token atual está funcionando</p>
+                    </div>
+                    <p className="text-xs text-green-700 mt-1">
+                      Só atualize o token se ele expirar ou se você precisar usar um novo.
+                    </p>
+                  </div>
+                )}
+
+                {statusConexao === "token_expirado" && (
+                  <div className="bg-red-50 p-3 rounded border border-red-200">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-red-600" />
+                      <p className="text-sm font-medium text-red-900">Token expirado - Ação necessária</p>
+                    </div>
+                    <p className="text-xs text-red-700 mt-1">
+                      O token atual expirou. Gere um novo token no Meta for Developers e cole acima para continuar
+                      usando o sistema.
+                    </p>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

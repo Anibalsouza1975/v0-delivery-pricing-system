@@ -10,9 +10,11 @@ export async function GET() {
         ? "801264823070601"
         : process.env.WHATSAPP_PHONE_NUMBER_ID || "801264823070601"
 
-    const WHATSAPP_ACCESS_TOKEN =
-      "EAALON6v2KzMBPkQK6TJazZBm65CHLOZB3s4n4ZBRi8L3fWe6x7D2IsxV5cIMVdbQKWIZC3ZCPvFWZB6UogZBxBZCqUIdICZBnP438gY6gdRLlkZCee8LL2k5oaKsgIv3y8BmZCdPUCFpEMwZAe1ZA2XVsk3T495c4koQwtR4AICPZCOcoKdzHDzHNENi4cNcavd3rZBxwwHibHMd2ENwHLbOTV1J7KmCKwopIjCWh8iV6wEZC3ixgKD6XxAZD"
     const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN
+
+    const { data: configData } = await supabase.from("whatsapp_config").select("token_whatsapp").single()
+
+    const WHATSAPP_ACCESS_TOKEN = configData?.token_whatsapp || process.env.WHATSAPP_ACCESS_TOKEN
 
     console.log("[v0] WhatsApp Phone Number ID:", WHATSAPP_PHONE_NUMBER_ID)
     console.log("[v0] WhatsApp Access Token exists:", !!WHATSAPP_ACCESS_TOKEN)
@@ -22,15 +24,6 @@ export async function GET() {
       const tokenEnd = WHATSAPP_ACCESS_TOKEN.substring(WHATSAPP_ACCESS_TOKEN.length - 10)
       console.log(`[v0] Token Preview: ${tokenStart}...${tokenEnd}`)
       console.log(`[v0] Token Length: ${WHATSAPP_ACCESS_TOKEN.length}`)
-
-      // Check which token is being used
-      if (tokenStart.includes("EAALON6v2KzMBPq8CgUm")) {
-        console.log("[v0] ⚠️ USANDO TOKEN ANTIGO EXPIRADO!")
-      } else if (tokenStart.includes("EAALON6v2KzMBPkQK6TJ")) {
-        console.log("[v0] ✅ USANDO TOKEN NOVO!")
-      } else {
-        console.log("[v0] ❓ Token não reconhecido")
-      }
     }
 
     const hasWhatsAppTokens = !!(WHATSAPP_ACCESS_TOKEN && WHATSAPP_PHONE_NUMBER_ID && WHATSAPP_VERIFY_TOKEN)
@@ -172,8 +165,12 @@ export async function PUT(request: NextRequest) {
     const supabase = await createClient()
     const config = await request.json()
 
+    const { data: configData } = await supabase.from("whatsapp_config").select("token_whatsapp").single()
+
+    const WHATSAPP_ACCESS_TOKEN = configData?.token_whatsapp || process.env.WHATSAPP_ACCESS_TOKEN
+
     const hasWhatsAppTokens = !!(
-      process.env.WHATSAPP_ACCESS_TOKEN &&
+      WHATSAPP_ACCESS_TOKEN &&
       process.env.WHATSAPP_PHONE_NUMBER_ID &&
       process.env.WHATSAPP_VERIFY_TOKEN
     )
@@ -206,6 +203,58 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ success: true, config: data })
   } catch (error) {
     console.error("[v0] Erro na API config WhatsApp:", error)
+    return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const supabase = await createClient()
+    const { token } = await request.json()
+
+    if (!token || typeof token !== "string") {
+      return NextResponse.json({ error: "Token inválido" }, { status: 400 })
+    }
+
+    // Get existing config
+    const { data: existingConfig } = await supabase.from("whatsapp_config").select("id").single()
+
+    if (!existingConfig) {
+      // Create config if doesn't exist
+      const { data, error } = await supabase
+        .from("whatsapp_config")
+        .insert({
+          token_whatsapp: token,
+          updated_at: new Date().toISOString(),
+        })
+        .select()
+        .single()
+
+      if (error) {
+        console.error("[v0] Erro ao criar config com token:", error)
+        return NextResponse.json({ error: "Erro ao salvar token" }, { status: 500 })
+      }
+
+      return NextResponse.json({ success: true, message: "Token salvo com sucesso" })
+    }
+
+    // Update token
+    const { error } = await supabase
+      .from("whatsapp_config")
+      .update({
+        token_whatsapp: token,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", existingConfig.id)
+
+    if (error) {
+      console.error("[v0] Erro ao atualizar token:", error)
+      return NextResponse.json({ error: "Erro ao salvar token" }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true, message: "Token atualizado com sucesso" })
+  } catch (error) {
+    console.error("[v0] Erro ao salvar token:", error)
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
   }
 }

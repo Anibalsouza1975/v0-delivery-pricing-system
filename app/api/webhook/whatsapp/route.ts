@@ -382,15 +382,16 @@ function getStatusMensagem(status: string): string {
 
 async function enviarMensagemWhatsApp(para: string, mensagem: string): Promise<boolean> {
   try {
-    const token =
-      "EAALON6v2KzMBPkQK6TJazZBm65CHLOZB3s4n4ZBRi8L3fWe6x7D2IsxV5cIMVdbQKWIZC3ZCPvFWZB6UogZBxBZCqUIdICZBnP438gY6gdRLlkZCee8LL2k5oaKsgIv3y8BmZCdPUCFpEMwZAe1ZA2XVsk3T495c4koQwtR4AICPZCOcoKdzHDzHNENi4cNcavd3rZBxwwHibHMd2ENwHLbOTV1J7KmCKwopIjCWh8iV6wEZC3ixgKD6XxAZD"
+    const { data: config } = await supabase.from("whatsapp_config").select("token_whatsapp").single()
+
+    const token = config?.token_whatsapp || process.env.WHATSAPP_ACCESS_TOKEN
     const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID
 
     console.log("[v0] ===== ENVIANDO MENSAGEM WHATSAPP =====")
     console.log("[v0] Para:", para)
     console.log("[v0] Mensagem:", mensagem)
     console.log("[v0] Token existe:", !!token)
-    console.log("[v0] 🔑 TOKEN HARDCODED ATIVO!")
+    console.log("[v0] Token do banco:", !!config?.token_whatsapp)
     console.log("[v0] Token primeiros 10 chars:", token?.substring(0, 10))
     console.log("[v0] Token últimos 10 chars:", token?.substring(token.length - 10))
     console.log("[v0] Token length:", token?.length)
@@ -415,7 +416,6 @@ async function enviarMensagemWhatsApp(para: string, mensagem: string): Promise<b
 
     console.log("[v0] URL da API:", url)
     console.log("[v0] Payload completo:", JSON.stringify(payload, null, 2))
-    console.log("[v0] 🔐 Authorization header (REMOVER DEPOIS):", `Bearer ${token}`)
 
     const response = await fetch(url, {
       method: "POST",
@@ -442,9 +442,8 @@ async function enviarMensagemWhatsApp(para: string, mensagem: string): Promise<b
         console.error("[v0] Erro detalhado:", JSON.stringify(errorData, null, 2))
 
         if (errorData.error?.code === 190) {
-          console.error("[v0] 🚨 TOKEN EXPIRADO! Você precisa gerar um novo token no Facebook Developer Console")
+          console.error("[v0] 🚨 TOKEN EXPIRADO! Você precisa atualizar o token na aba Integração")
           console.error("[v0] 🚨 Erro:", errorData.error.message)
-          console.error("[v0] 🚨 Token que falhou (primeiros 20 chars):", token?.substring(0, 20))
           await salvarMensagemFalha(para, mensagem, `Token expirado: ${errorData.error.message}`)
         } else {
           await salvarMensagemFalha(

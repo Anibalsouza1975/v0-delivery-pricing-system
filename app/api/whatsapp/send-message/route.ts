@@ -1,14 +1,16 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 
-const WHATSAPP_ACCESS_TOKEN =
-  "EAALON6v2KzMBPkQK6TJazZBm65CHLOZB3s4n4ZBRi8L3fWe6x7D2IsxV5cIMVdbQKWIZC3ZCPvFWZB6UogZBxBZCqUIdICZBnP438gY6gdRLlkZCee8LL2k5oaKsgIv3y8BmZCdPUCFpEMwZAe1ZA2XVsk3T495c4koQwtR4AICPZCOcoKdzHDzHNENi4cNcavd3rZBxwwHibHMd2ENwHLbOTV1J7KmCKwopIjCWh8iV6wEZC3ixgKD6XxAZD"
-
 export async function POST(request: NextRequest) {
   try {
     const { to, message, tipo = "bot" } = await request.json()
 
     const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID
+
+    const supabase = await createClient()
+    const { data: configData } = await supabase.from("whatsapp_config").select("token_whatsapp").single()
+
+    const WHATSAPP_ACCESS_TOKEN = configData?.token_whatsapp || process.env.WHATSAPP_ACCESS_TOKEN
 
     if (!WHATSAPP_ACCESS_TOKEN || !phoneNumberId) {
       return NextResponse.json({ error: "WhatsApp não configurado" }, { status: 400 })
@@ -63,8 +65,6 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("[v0] ✅ Mensagem enviada com sucesso:", result.messages?.[0]?.id)
-
-    const supabase = await createClient()
 
     // Buscar ou criar conversa
     const { data: conversa } = await supabase
