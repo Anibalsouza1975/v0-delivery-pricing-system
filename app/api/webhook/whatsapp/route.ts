@@ -210,7 +210,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ status: "success", received: true, requestId })
   } catch (error) {
     console.error(`[v0] [${requestId}] ❌ ERRO CRÍTICO NO WEBHOOK:`, error)
-    console.error(`[v0] [${requestId}] Stack:`, error instanceof Error ? error.stack : "No stack")
+    console.error(`[v0] [${requestId}] Stack:`, error instanceof Error ? error.stack : "No stack trace")
     return NextResponse.json(
       { error: "Internal server error", details: error instanceof Error ? error.message : "Unknown", requestId },
       { status: 500 },
