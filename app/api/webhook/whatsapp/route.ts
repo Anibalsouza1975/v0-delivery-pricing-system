@@ -228,14 +228,12 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
     if (isOrderTracking) {
       console.log("[v0] Detectado: pergunta sobre rastreamento de pedido")
 
-      // Extrair número do pedido se mencionado
       const numeroPedidoMatch = mensagem.match(/#?(\d{4,6})/)
 
       if (numeroPedidoMatch) {
         const numeroPedido = numeroPedidoMatch[1]
         console.log("[v0] Número do pedido detectado:", numeroPedido)
 
-        // Buscar pedido no banco de dados
         try {
           const response = await fetch(
             `${process.env.NEXT_PUBLIC_SUPABASE_URL?.replace("/rest/v1", "")}/api/pedidos/buscar?numero=${numeroPedido}`,
@@ -256,7 +254,6 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
         }
       }
 
-      // Se não encontrou número ou não conseguiu buscar, pedir o número
       return (
         "Para consultar seu pedido, por favor me informe o número do pedido. " +
         "Você pode encontrá-lo no comprovante ou na mensagem de confirmação. 📱\n\n" +
@@ -264,7 +261,6 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
       )
     }
 
-    // Contexto do negócio (seria carregado do banco de dados)
     const contextoNegocio = `
     Você é o assistente virtual do Cartago Burger Grill, um restaurante especializado em hambúrgueres artesanais.
 
@@ -274,7 +270,7 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
     - Horário: 18h às 23h (Segunda a Domingo)
     - Delivery: Disponível via WhatsApp
     - Tempo médio de entrega: 30-45 minutos
-    - WhatsApp para pedidos: (11) 9 1234-5678
+    - WhatsApp para pedidos: (41) 99533-6065
 
     CARDÁPIO PRINCIPAL:
     - Cartago Classic: R$ 18,90 (hambúrguer 150g, queijo, alface, tomate, molho especial)
@@ -322,7 +318,7 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
 
     if (!text || text.trim().length === 0) {
       console.log("[v0] ⚠️ Resposta da IA vazia, usando fallback")
-      return "Desculpe, não entendi sua mensagem. Pode reformular? Estou aqui para ajudar com nosso cardápio, pedidos e informações sobre o restaurante! 😊"
+      return "Desculpe, não entendi sua mensagem. Pode reformular? Estou aqui para ajudar com nosso cardápio, pedidos e informações sobre o Cartago Burger Grill! 😊"
     }
 
     return text

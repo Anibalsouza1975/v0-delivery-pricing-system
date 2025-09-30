@@ -38,7 +38,7 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-xl font-semibold mb-3">5. Contato</h2>
-            <p>Para questões sobre esta política, entre em contato via WhatsApp: +1 555 185 0889</p>
+            <p>Para questões sobre esta política, entre em contato via WhatsApp: (41) 99533-6065</p>
           </section>
 
           <section>

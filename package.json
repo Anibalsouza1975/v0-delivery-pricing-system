@@ -43,6 +43,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
     "geist": "latest",
+    "groq-sdk": "latest",
     "http": "latest",
     "lucide-react": "^0.454.0",
     "next": "15.2.4",
