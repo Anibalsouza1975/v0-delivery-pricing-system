@@ -85,43 +85,45 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env
 
 // Recebimento de mensagens
 export async function POST(request: NextRequest) {
+  // Log IMMEDIATELY when POST is called
+  const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(7)}`
+  console.log(`[v0] 🚀 ===== WEBHOOK POST INICIADO [${requestId}] =====`)
+  console.log(`[v0] [${requestId}] Timestamp:`, new Date().toISOString())
+  console.log(`[v0] [${requestId}] Method:`, request.method)
+  console.log(`[v0] [${requestId}] URL:`, request.url)
+
   try {
-    console.log("[v0] ===== WEBHOOK POST RECEBIDO =====")
-    console.log("[v0] Timestamp:", new Date().toISOString())
-    console.log("[v0] Method:", request.method)
-    console.log("[v0] URL:", request.url)
-    console.log("[v0] User-Agent:", request.headers.get("user-agent"))
-    console.log("[v0] X-Hub-Signature-256:", request.headers.get("x-hub-signature-256"))
-    console.log("[v0] X-Forwarded-For:", request.headers.get("x-forwarded-for"))
-    console.log("[v0] Content-Type:", request.headers.get("content-type"))
-    console.log("[v0] Content-Length:", request.headers.get("content-length"))
-    console.log("[v0] Headers completos:", Object.fromEntries(request.headers.entries()))
+    console.log(`[v0] [${requestId}] User-Agent:`, request.headers.get("user-agent"))
+    console.log(`[v0] [${requestId}] X-Hub-Signature-256:`, request.headers.get("x-hub-signature-256"))
+    console.log(`[v0] [${requestId}] X-Forwarded-For:`, request.headers.get("x-forwarded-for"))
+    console.log(`[v0] [${requestId}] Content-Type:`, request.headers.get("content-type"))
+    console.log(`[v0] [${requestId}] Content-Length:`, request.headers.get("content-length"))
 
     // Verificar se o body existe
     const rawBody = await request.text()
-    console.log("[v0] Raw body length:", rawBody.length)
-    console.log("[v0] Raw body:", rawBody)
+    console.log(`[v0] [${requestId}] Raw body length:`, rawBody.length)
+    console.log(`[v0] [${requestId}] Raw body:`, rawBody)
 
     if (!rawBody) {
-      console.log("[v0] ⚠️ Body vazio recebido")
-      return NextResponse.json({ status: "empty_body" })
+      console.log(`[v0] [${requestId}] ⚠️ Body vazio recebido`)
+      return NextResponse.json({ status: "empty_body", requestId })
     }
 
     let body
     try {
       body = JSON.parse(rawBody)
+      console.log(`[v0] [${requestId}] ✅ Body parseado com sucesso`)
     } catch (parseError) {
-      console.error("[v0] ❌ Erro ao fazer parse do JSON:", parseError)
-      console.log("[v0] Raw body que causou erro:", rawBody)
-      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 })
+      console.error(`[v0] [${requestId}] ❌ Erro ao fazer parse do JSON:`, parseError)
+      console.log(`[v0] [${requestId}] Raw body que causou erro:`, rawBody)
+      return NextResponse.json({ error: "Invalid JSON", requestId }, { status: 400 })
     }
 
-    console.log("[v0] Body parseado com sucesso:", JSON.stringify(body, null, 2))
-    console.log("[v0] Tipo de objeto:", body.object)
-    console.log("[v0] É WhatsApp Business Account?", body.object === "whatsapp_business_account")
+    console.log(`[v0] [${requestId}] Body completo:`, JSON.stringify(body, null, 2))
+    console.log(`[v0] [${requestId}] Tipo de objeto:`, body.object)
 
     if (body.object === "whatsapp_business_account") {
-      console.log("[v0] ✅ Webhook do WhatsApp Business Account detectado")
+      console.log(`[v0] [${requestId}] ✅ Webhook do WhatsApp Business Account detectado`)
 
       const entry = body.entry?.[0]
       const changes = entry?.changes?.[0]
@@ -129,98 +131,88 @@ export async function POST(request: NextRequest) {
       const messages = value?.messages
       const statuses = value?.statuses
 
-      console.log("[v0] Estrutura detalhada:")
-      console.log("[v0] - Entry exists:", !!entry)
-      console.log("[v0] - Entry ID:", entry?.id)
-      console.log("[v0] - Changes exists:", !!changes)
-      console.log("[v0] - Changes field:", changes?.field)
-      console.log("[v0] - Value exists:", !!value)
-      console.log("[v0] - Messages exists:", !!messages)
-      console.log("[v0] - Messages length:", messages?.length || 0)
-      console.log("[v0] - Statuses exists:", !!statuses)
-      console.log("[v0] - Statuses length:", statuses?.length || 0)
+      console.log(`[v0] [${requestId}] Estrutura detalhada:`)
+      console.log(`[v0] [${requestId}] - Entry exists:`, !!entry)
+      console.log(`[v0] [${requestId}] - Messages exists:`, !!messages)
+      console.log(`[v0] [${requestId}] - Messages length:`, messages?.length || 0)
 
       // Processar mensagens recebidas
       if (messages && messages.length > 0) {
+        console.log(`[v0] [${requestId}] 🎉 ${messages.length} MENSAGEM(NS) DETECTADA(S)!`)
+
         for (const message of messages) {
           const from = message.from
           const text = message.text?.body
           const messageId = message.id
-          const timestamp = message.timestamp
 
-          console.log("[v0] 🎉 MENSAGEM REAL DETECTADA!")
-          console.log("[v0] - De:", from)
-          console.log("[v0] - Texto:", text)
-          console.log("[v0] - ID:", messageId)
-          console.log("[v0] - Timestamp:", timestamp)
-          console.log("[v0] - Tipo:", message.type)
+          console.log(`[v0] [${requestId}] 📨 PROCESSANDO MENSAGEM:`)
+          console.log(`[v0] [${requestId}] - De:`, from)
+          console.log(`[v0] [${requestId}] - Texto:`, text)
+          console.log(`[v0] [${requestId}] - ID:`, messageId)
+          console.log(`[v0] [${requestId}] - Tipo:`, message.type)
 
           if (mensagensProcessadas.has(messageId)) {
-            console.log("[v0] Mensagem já processada, ignorando:", messageId)
+            console.log(`[v0] [${requestId}] ⏭️ Mensagem já processada, ignorando:`, messageId)
             continue
           }
 
           mensagensProcessadas.add(messageId)
+          console.log(`[v0] [${requestId}] ✅ Mensagem marcada como processada`)
 
           if (text && message.type === "text") {
-            console.log("[v0] Processando mensagem de texto com IA...")
+            console.log(`[v0] [${requestId}] 🤖 Iniciando processamento com IA...`)
 
             try {
+              console.log(`[v0] [${requestId}] 💾 Salvando mensagem do cliente no banco...`)
               await salvarConversaNoBanco(from, text, messageId)
+              console.log(`[v0] [${requestId}] ✅ Mensagem do cliente salva`)
 
+              console.log(`[v0] [${requestId}] 🧠 Gerando resposta com Groq AI...`)
               const resposta = await processarMensagemComIA(text, from)
-              console.log("[v0] Resposta da IA gerada:", resposta)
+              console.log(`[v0] [${requestId}] ✅ Resposta da IA gerada:`, resposta.substring(0, 100) + "...")
 
-              // This ensures the response appears in the dashboard even if WhatsApp sending fails
+              console.log(`[v0] [${requestId}] 💾 Salvando resposta da IA no banco...`)
               await salvarRespostaNoBanco(from, resposta)
-              console.log("[v0] ✅ Resposta salva no banco de dados")
+              console.log(`[v0] [${requestId}] ✅ Resposta da IA salva no banco`)
 
+              console.log(`[v0] [${requestId}] 📤 Tentando enviar via WhatsApp...`)
               const enviado = await enviarMensagemWhatsApp(from, resposta)
 
               if (enviado) {
-                console.log("[v0] ✅ Mensagem enviada com sucesso via WhatsApp para:", from)
+                console.log(`[v0] [${requestId}] ✅ Mensagem enviada com sucesso via WhatsApp`)
                 await atualizarStatusMensagem(from, resposta, "enviada")
               } else {
-                console.log("[v0] ⚠️ Falha ao enviar via WhatsApp, mas resposta já está salva no banco")
+                console.log(`[v0] [${requestId}] ⚠️ Falha ao enviar via WhatsApp (mas resposta está no banco)`)
                 await atualizarStatusMensagem(from, resposta, "pendente")
               }
             } catch (error) {
-              console.error("[v0] ❌ Erro ao processar mensagem:", error)
+              console.error(`[v0] [${requestId}] ❌ Erro ao processar mensagem:`, error)
+              console.error(`[v0] [${requestId}] Stack:`, error instanceof Error ? error.stack : "No stack")
             }
           } else {
-            console.log("[v0] Mensagem não é de texto ou não tem conteúdo, tipo:", message.type)
+            console.log(`[v0] [${requestId}] ⏭️ Mensagem não é de texto, tipo:`, message.type)
           }
         }
+      } else {
+        console.log(`[v0] [${requestId}] ⚠️ Webhook recebido mas SEM mensagens`)
+        console.log(`[v0] [${requestId}] Pode ser webhook de teste ou status update`)
       }
 
-      // Processar status de mensagens (entregue, lida, etc.)
       if (statuses && statuses.length > 0) {
-        console.log("[v0] 📊 Status de mensagens recebidos:")
-        for (const status of statuses) {
-          console.log("[v0] - Status ID:", status.id)
-          console.log("[v0] - Status:", status.status)
-          console.log("[v0] - Timestamp:", status.timestamp)
-          console.log("[v0] - Recipient ID:", status.recipient_id)
-        }
-      }
-
-      if (!messages?.length && !statuses?.length) {
-        console.log("[v0] ⚠️ Webhook recebido mas sem mensagens ou status")
-        console.log("[v0] Pode ser webhook de teste ou configuração")
+        console.log(`[v0] [${requestId}] 📊 ${statuses.length} status update(s) recebido(s)`)
       }
     } else {
-      console.log("[v0] ⚠️ Webhook recebido mas não é do WhatsApp Business Account")
-      console.log("[v0] Object type:", body.object)
-      console.log("[v0] Possível webhook de teste ou outro serviço")
+      console.log(`[v0] [${requestId}] ⚠️ Não é webhook do WhatsApp Business Account`)
+      console.log(`[v0] [${requestId}] Object type:`, body.object)
     }
 
-    console.log("[v0] ===== FIM WEBHOOK =====")
-    return NextResponse.json({ status: "success", received: true })
+    console.log(`[v0] [${requestId}] ===== FIM WEBHOOK POST =====`)
+    return NextResponse.json({ status: "success", received: true, requestId })
   } catch (error) {
-    console.error("[v0] ❌ Erro crítico no webhook:", error)
-    console.error("[v0] Stack trace:", error instanceof Error ? error.stack : "No stack trace")
+    console.error(`[v0] [${requestId}] ❌ ERRO CRÍTICO NO WEBHOOK:`, error)
+    console.error(`[v0] [${requestId}] Stack:`, error instanceof Error ? error.stack : "No stack")
     return NextResponse.json(
-      { error: "Internal server error", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Internal server error", details: error instanceof Error ? error.message : "Unknown", requestId },
       { status: 500 },
     )
   }
