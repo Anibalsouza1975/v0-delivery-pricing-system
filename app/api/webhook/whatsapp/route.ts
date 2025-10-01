@@ -237,6 +237,12 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
     const isPrimeiraInteracao = !mensagensAnteriores || mensagensAnteriores.length <= 1
     console.log("[v0] É primeira interação?", isPrimeiraInteracao)
 
+    const clientePediuMenu =
+      /cardápio|cardapio|menu|ver.*produtos|ver.*opções|ver.*opcoes|o que.*tem|quais.*produtos|mostrar.*cardápio|mostrar.*cardapio|mostrar.*menu|quero.*ver.*cardápio|quero.*ver.*cardapio|quero.*ver.*menu/i.test(
+        mensagem,
+      )
+    console.log("[v0] Cliente pediu menu?", clientePediuMenu)
+
     const isOrderTracking = /rastreio|rastrear|pedido|acompanhar|status.*pedido|onde.*está|número.*pedido/i.test(
       mensagem,
     )
@@ -307,6 +313,26 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
     `
       : ""
 
+    const menuLinkInstrucoes = clientePediuMenu
+      ? `
+    IMPORTANTE - CLIENTE PEDIU O CARDÁPIO/MENU:
+    - O cliente está pedindo para ver o cardápio/menu
+    - SEMPRE inclua o link do menu visual na sua resposta: ${menuUrl}
+    - Você pode listar algumas opções principais E também oferecer o link para visualização completa
+    - Exemplo de resposta:
+      "Claro! Temos várias opções deliciosas! 🍔
+      
+      Algumas opções principais:
+      - Hambúrgueres artesanais (X-Bacon, X-Burger Clássico)
+      - Acompanhamentos (Batata Frita Grande)
+      - Bebidas e Combos
+      
+      Para ver nosso cardápio completo com fotos e preços, acesse: ${menuUrl}
+      
+      Posso te ajudar com algum produto específico? 😊"
+    `
+      : ""
+
     const contextoNegocio = `
     Você é o assistente virtual do Cartago Burger Grill, um restaurante especializado em hambúrgueres artesanais.
 
@@ -320,6 +346,8 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
     - Localização: Colombo, PR
 
     ${primeiraInteracaoInstrucoes}
+
+    ${menuLinkInstrucoes}
 
     ${cardapioTexto}
 
@@ -339,6 +367,7 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
     INSTRUÇÕES:
     - Seja cordial, amigável e prestativo
     - Ofereça o cardápio quando perguntado
+    - SEMPRE inclua o link do menu visual (${menuUrl}) quando o cliente pedir o cardápio/menu
     - Ajude com pedidos de forma clara
     - Informe sobre tempo de entrega quando relevante
     - Para rastreamento, sempre peça o número do pedido
