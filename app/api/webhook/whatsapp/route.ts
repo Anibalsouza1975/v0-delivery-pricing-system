@@ -2,6 +2,10 @@ import { type NextRequest, NextResponse } from "next/server"
 import { generateText } from "ai"
 import { groq } from "@ai-sdk/groq"
 import { createClient } from "@supabase/supabase-js"
+import { createClient as createServerClient } from "@/lib/supabase/server"
+
+const mensagensProcessadas = new Set<string>()
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
 export async function GET(request: NextRequest) {
   // Log IMMEDIATELY - before any processing
@@ -81,9 +85,6 @@ export async function GET(request: NextRequest) {
     },
   })
 }
-
-const mensagensProcessadas = new Set<string>()
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
 export async function POST(request: NextRequest) {
   // Log IMMEDIATELY when POST is called
@@ -261,6 +262,8 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
       )
     }
 
+    const cardapioDinamico = await buscarCardapioDoBanco()
+
     const contextoNegocio = `
     Você é o assistente virtual do Cartago Burger Grill, um restaurante especializado em hambúrgueres artesanais.
 
@@ -273,12 +276,7 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
     - WhatsApp para pedidos: (41) 99533-6065
     - Localização: Colombo, PR
 
-    CARDÁPIO PRINCIPAL:
-    - Cartago Classic: R$ 18,90 (hambúrguer 150g, queijo, alface, tomate, molho especial)
-    - Cartago Bacon: R$ 22,90 (hambúrguer 150g, bacon, queijo, cebola caramelizada)
-    - Cartago Duplo: R$ 28,90 (2 hambúrgueres 150g, queijo duplo, molho especial)
-    - Batata Frita: R$ 12,90 (porção individual)
-    - Refrigerante Lata: R$ 5,90
+    ${cardapioDinamico}
 
     RASTREAMENTO DE PEDIDOS:
     - Se o cliente perguntar sobre rastreamento, status ou localização do pedido, peça o número do pedido
@@ -634,5 +632,86 @@ async function atualizarStatusMensagem(telefone: string, conteudo: string, novoS
     }
   } catch (error) {
     console.error("[v0] Erro ao atualizar status da mensagem:", error)
+  }
+}
+
+async function buscarCardapioDoBanco(): Promise<string> {
+  try {
+    console.log("[v0] Buscando cardápio do banco de dados...")
+
+    const supabase = await createServerClient()
+
+    // Buscar produtos ativos
+    const { data: produtos, error: erroProdutos } = await supabase
+      .from("produtos")
+      .select("nome, descricao, preco_venda")
+      .eq("ativo", true)
+      .order("nome")
+
+    // Buscar bebidas ativas
+    const { data: bebidas, error: erroBebidas } = await supabase
+      .from("bebidas")
+      .select("nome, descricao, preco_venda")
+      .eq("ativo", true)
+      .order("nome")
+
+    // Buscar combos ativos
+    const { data: combos, error: erroCombos } = await supabase
+      .from("combos")
+      .select("nome, descricao, preco_final")
+      .eq("ativo", true)
+      .order("nome")
+
+    if (erroProdutos || erroBebidas || erroCombos) {
+      console.error("[v0] Erro ao buscar cardápio:", { erroProdutos, erroBebidas, erroCombos })
+      return "Cardápio temporariamente indisponível"
+    }
+
+    // Formatar cardápio em texto
+    let cardapioTexto = "CARDÁPIO CARTAGO BURGER GRILL:\n\n"
+
+    // Adicionar produtos
+    if (produtos && produtos.length > 0) {
+      cardapioTexto += "🍔 HAMBÚRGUERES:\n"
+      produtos.forEach((p) => {
+        cardapioTexto += `- ${p.nome}: R$ ${p.preco_venda.toFixed(2)}`
+        if (p.descricao) {
+          cardapioTexto += ` (${p.descricao})`
+        }
+        cardapioTexto += "\n"
+      })
+      cardapioTexto += "\n"
+    }
+
+    // Adicionar bebidas
+    if (bebidas && bebidas.length > 0) {
+      cardapioTexto += "🥤 BEBIDAS:\n"
+      bebidas.forEach((b) => {
+        cardapioTexto += `- ${b.nome}: R$ ${b.preco_venda.toFixed(2)}`
+        if (b.descricao) {
+          cardapioTexto += ` (${b.descricao})`
+        }
+        cardapioTexto += "\n"
+      })
+      cardapioTexto += "\n"
+    }
+
+    // Adicionar combos
+    if (combos && combos.length > 0) {
+      cardapioTexto += "🎁 COMBOS:\n"
+      combos.forEach((c) => {
+        cardapioTexto += `- ${c.nome}: R$ ${c.preco_final.toFixed(2)}`
+        if (c.descricao) {
+          cardapioTexto += ` (${c.descricao})`
+        }
+        cardapioTexto += "\n"
+      })
+    }
+
+    console.log("[v0] Cardápio carregado com sucesso do banco de dados")
+    return cardapioTexto
+  } catch (error) {
+    console.error("[v0] Erro ao buscar cardápio do banco:", error)
+    return "Cardápio temporariamente indisponível"
   }
 }
