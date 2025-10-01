@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { enviarNotificacaoPedido } from "@/lib/whatsapp-order-notifications"
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,12 +22,12 @@ export async function POST(request: NextRequest) {
           cliente_observacoes: pedido.cliente.observacoes || "",
           itens: pedido.itens,
           subtotal: pedido.subtotal,
-          taxa_entrega: pedido.frete || 0, // Campo correto no banco
+          taxa_entrega: pedido.frete || 0,
           total: pedido.total,
           forma_pagamento: pedido.formaPagamento,
           observacoes_pedido: pedido.observacoes || "",
           status: pedido.status || "pendente",
-          origem: "menu", // Sempre menu para pedidos vindos do menu de clientes
+          origem: "menu",
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         },
@@ -40,6 +41,20 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("[v0] API: Pedido salvo com sucesso:", data.id)
+
+    console.log("[v0] Enviando notificação de novo pedido via WhatsApp")
+    enviarNotificacaoPedido({
+      numeroPedido: data.numero_pedido,
+      clienteNome: pedido.cliente.nome || "Cliente",
+      clienteTelefone: pedido.cliente.telefone,
+      status: data.status,
+      total: data.total,
+      enderecoEntrega: pedido.cliente.endereco,
+    }).catch((err) => {
+      console.error("[v0] Erro ao enviar notificação WhatsApp:", err)
+      // Não falhar a criação do pedido por causa da notificação
+    })
+
     return NextResponse.json(data)
   } catch (error) {
     console.error("[v0] API: Erro na API de pedidos:", error)

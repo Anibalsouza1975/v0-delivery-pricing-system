@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { enviarNotificacaoPedido } from "@/lib/whatsapp-order-notifications"
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -32,6 +33,23 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     if (error) {
       console.error("Erro ao atualizar pedido:", error)
       return NextResponse.json({ error: "Erro ao atualizar pedido" }, { status: 500 })
+    }
+
+    if (pedidoAtual.status !== status) {
+      console.log("[v0] Status mudou de", pedidoAtual.status, "para", status)
+      console.log("[v0] Enviando notificação WhatsApp para:", pedidoAtual.cliente_telefone)
+
+      // Enviar notificação em background (não bloquear a resposta)
+      enviarNotificacaoPedido({
+        numeroPedido: pedidoAtual.numero_pedido,
+        clienteNome: pedidoAtual.cliente_nome || "Cliente",
+        clienteTelefone: pedidoAtual.cliente_telefone,
+        status: status,
+        total: pedidoAtual.total,
+        enderecoEntrega: pedidoAtual.cliente_endereco,
+      }).catch((err) => {
+        console.error("[v0] Erro ao enviar notificação WhatsApp:", err)
+      })
     }
 
     if (status === "concluido" && pedidoAtual.status !== "concluido") {
