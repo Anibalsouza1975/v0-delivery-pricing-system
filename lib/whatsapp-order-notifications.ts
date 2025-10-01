@@ -79,7 +79,7 @@ export async function enviarNotificacaoPedido(data: OrderNotificationData): Prom
       body: JSON.stringify({
         to: telefoneCompleto,
         message: mensagem,
-        tipo: "notificacao",
+        tipo: "bot", // Mudança: era "notificacao", agora "bot"
       }),
     })
 
