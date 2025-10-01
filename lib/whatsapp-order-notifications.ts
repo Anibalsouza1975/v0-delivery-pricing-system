@@ -1,4 +1,4 @@
-// Helper para enviar notificações de pedidos via WhatsApp
+import { createClient } from "@/lib/supabase/server"
 
 interface OrderNotificationData {
   numeroPedido: string
@@ -40,14 +40,17 @@ const getStatusMessage = (status: string, data: OrderNotificationData): string =
   }
 }
 
-// Função para enviar notificação via WhatsApp
 export async function enviarNotificacaoPedido(data: OrderNotificationData): Promise<boolean> {
   try {
     const { clienteTelefone, status } = data
 
+    console.log("[v0] 🔔 Iniciando envio de notificação de pedido")
+    console.log("[v0] Status:", status)
+    console.log("[v0] Telefone:", clienteTelefone)
+
     // Validar telefone
     if (!clienteTelefone || clienteTelefone.trim() === "") {
-      console.log("[v0] Telefone não informado, notificação não enviada")
+      console.log("[v0] ❌ Telefone não informado, notificação não enviada")
       return false
     }
 
@@ -56,7 +59,7 @@ export async function enviarNotificacaoPedido(data: OrderNotificationData): Prom
 
     // Verificar se tem pelo menos 10 dígitos
     if (telefoneFormatado.length < 10) {
-      console.log("[v0] Telefone inválido:", clienteTelefone)
+      console.log("[v0] ❌ Telefone inválido:", clienteTelefone)
       return false
     }
 
@@ -66,106 +69,85 @@ export async function enviarNotificacaoPedido(data: OrderNotificationData): Prom
     // Gerar mensagem personalizada
     const mensagem = getStatusMessage(status, data)
 
-    console.log("[v0] Enviando notificação de pedido via WhatsApp")
-    console.log("[v0] Telefone:", telefoneCompleto)
-    console.log("[v0] Status:", status)
+    console.log("[v0] 📝 Mensagem gerada:", mensagem.substring(0, 50) + "...")
 
-    // Enviar mensagem via API do WhatsApp
-    const response = await fetch("/api/whatsapp/send-message", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        to: telefoneCompleto,
-        message: mensagem,
-        tipo: "bot", // Mudança: era "notificacao", agora "bot"
-      }),
-    })
+    // Buscar configuração do WhatsApp
+    const supabase = await createClient()
+    const { data: configData } = await supabase.from("whatsapp_config").select("token_whatsapp").single()
 
-    if (!response.ok) {
-      const error = await response.json()
-      console.error("[v0] Erro ao enviar notificação WhatsApp:", error)
+    const WHATSAPP_ACCESS_TOKEN = configData?.token_whatsapp || process.env.WHATSAPP_ACCESS_TOKEN
+    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID
+
+    if (!WHATSAPP_ACCESS_TOKEN || !phoneNumberId) {
+      console.error("[v0] ❌ WhatsApp não configurado (token ou phone number ID ausente)")
       return false
     }
 
-    const result = await response.json()
-    console.log("[v0] Notificação enviada com sucesso:", result.messageId)
-    return true
-  } catch (error) {
-    console.error("[v0] Erro ao enviar notificação:", error)
-    return false
-  }
-}
+    console.log("[v0] 📤 Enviando mensagem via WhatsApp API...")
 
-// Função para enviar notificação com botão de rastreamento
-export async function enviarNotificacaoComRastreamento(data: OrderNotificationData): Promise<boolean> {
-  try {
-    const { clienteTelefone, numeroPedido } = data
-
-    // Validar telefone
-    if (!clienteTelefone || clienteTelefone.trim() === "") {
-      console.log("[v0] Telefone não informado, notificação não enviada")
-      return false
-    }
-
-    // Formatar telefone
-    const telefoneFormatado = clienteTelefone.replace(/\D/g, "")
-    const telefoneCompleto = telefoneFormatado.startsWith("55") ? telefoneFormatado : `55${telefoneFormatado}`
-
-    // URL de rastreamento
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://v0-delivery-pricing-system.vercel.app"
-    const trackingUrl = `${siteUrl}/status-pedido?numero=${numeroPedido}`
-
-    // Mensagem inicial
-    const mensagem = getStatusMessage(data.status, data)
-
-    console.log("[v0] Enviando notificação com botão de rastreamento")
-
-    // Enviar mensagem com botão
-    const response = await fetch(`https://graph.facebook.com/v18.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
+    // Enviar mensagem via WhatsApp Graph API
+    const response = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+        Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
         messaging_product: "whatsapp",
         to: telefoneCompleto,
-        type: "interactive",
-        interactive: {
-          type: "button",
-          body: {
-            text: mensagem,
-          },
-          action: {
-            buttons: [
-              {
-                type: "reply",
-                reply: {
-                  id: `track_${numeroPedido}`,
-                  title: "Acompanhar Pedido 📦",
-                },
-              },
-            ],
-          },
+        type: "text",
+        text: {
+          body: mensagem,
         },
       }),
     })
 
+    const result = await response.json()
+
     if (!response.ok) {
-      const error = await response.json()
-      console.error("[v0] Erro ao enviar notificação com botão:", error)
-      // Fallback: enviar mensagem simples
-      return await enviarNotificacaoPedido(data)
+      console.error("[v0] ❌ Erro ao enviar mensagem WhatsApp:", result)
+      return false
     }
 
-    const result = await response.json()
-    console.log("[v0] Notificação com botão enviada:", result.messages?.[0]?.id)
+    console.log("[v0] ✅ Mensagem enviada com sucesso:", result.messages?.[0]?.id)
+
+    // Salvar mensagem no banco de dados
+    try {
+      // Buscar ou criar conversa
+      const { data: conversa } = await supabase
+        .from("whatsapp_conversas")
+        .select("id")
+        .eq("cliente_telefone", telefoneCompleto)
+        .single()
+
+      if (conversa) {
+        await supabase.from("whatsapp_mensagens").insert({
+          conversa_id: conversa.id,
+          tipo: "bot",
+          conteudo: mensagem,
+        })
+
+        // Atualizar última mensagem da conversa
+        await supabase
+          .from("whatsapp_conversas")
+          .update({
+            ultima_mensagem: mensagem,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", conversa.id)
+
+        console.log("[v0] 💾 Mensagem salva no banco de dados")
+      } else {
+        console.log("[v0] ⚠️ Conversa não encontrada, mensagem não salva no banco")
+      }
+    } catch (dbError) {
+      console.error("[v0] ⚠️ Erro ao salvar mensagem no banco (não crítico):", dbError)
+      // Não falhar a notificação por causa do erro no banco
+    }
+
     return true
   } catch (error) {
-    console.error("[v0] Erro ao enviar notificação com botão:", error)
-    // Fallback: enviar mensagem simples
-    return await enviarNotificacaoPedido(data)
+    console.error("[v0] ❌ Erro ao enviar notificação:", error)
+    return false
   }
 }
