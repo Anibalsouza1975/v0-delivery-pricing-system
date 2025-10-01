@@ -39,6 +39,7 @@
     "@types/react-dom": "^18",
     "@vercel/blob": "latest",
     "ai": "latest",
+    "buffer": "latest",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",

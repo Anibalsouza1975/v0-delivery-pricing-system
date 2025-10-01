@@ -3,6 +3,8 @@ import { generateText } from "ai"
 import { groq } from "@ai-sdk/groq"
 import { createClient } from "@supabase/supabase-js"
 import { createClient as createServerClient } from "@/lib/supabase/server"
+import { put } from "@vercel/blob"
+import { Buffer } from "buffer"
 
 const mensagensProcessadas = new Set<string>()
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
@@ -789,28 +791,55 @@ async function enviarImagemSeProdutoMencionado(
     console.log("[v0] Total de produtos com imagem:", produtosComImagem.length)
     console.log("[v0] Produtos disponíveis:", produtosComImagem.map((p) => p.nome).join(", "))
 
-    // Normalizar texto para comparação
     const respostaNormalizada = respostaIA.toLowerCase()
     console.log("[v0] Resposta normalizada:", respostaNormalizada)
 
-    // Procurar por produtos mencionados
     for (const produto of produtosComImagem) {
       const nomeNormalizado = produto.nome.toLowerCase()
       console.log(`[v0] Verificando produto: "${produto.nome}" (normalizado: "${nomeNormalizado}")`)
       console.log(`[v0] Imagem URL existe: ${!!produto.imagem_url}`)
-      console.log(`[v0] Imagem URL: ${produto.imagem_url?.substring(0, 50)}...`)
 
-      // Verificar se o nome do produto aparece na resposta
       if (respostaNormalizada.includes(nomeNormalizado)) {
         console.log(`[v0] ✅ MATCH ENCONTRADO! Produto: ${produto.nome}`)
 
         if (produto.imagem_url) {
-          console.log(`[v0] 📤 Enviando imagem do produto: ${produto.nome}`)
+          console.log(`[v0] 📤 Preparando envio de imagem do produto: ${produto.nome}`)
 
-          // Enviar imagem do produto
+          let imagemUrlPublica = produto.imagem_url
+
+          // Check if image is base64
+          if (produto.imagem_url.startsWith("data:image/")) {
+            console.log(`[v0] 🔄 Imagem em base64 detectada, fazendo upload para Blob...`)
+
+            try {
+              // Extract base64 data
+              const base64Data = produto.imagem_url.split(",")[1]
+              const mimeType = produto.imagem_url.match(/data:(.*?);/)?.[1] || "image/jpeg"
+              const extension = mimeType.split("/")[1]
+
+              // Convert base64 to buffer
+              const buffer = Buffer.from(base64Data, "base64")
+
+              // Upload to Vercel Blob
+              const filename = `produtos/${produto.tipo}/${produto.nome.toLowerCase().replace(/\s+/g, "-")}-${Date.now()}.${extension}`
+              const blob = await put(filename, buffer, {
+                access: "public",
+                contentType: mimeType,
+              })
+
+              imagemUrlPublica = blob.url
+              console.log(`[v0] ✅ Upload concluído! URL pública: ${imagemUrlPublica}`)
+            } catch (uploadError) {
+              console.error(`[v0] ❌ Erro ao fazer upload da imagem:`, uploadError)
+              console.log(`[v0] ⚠️ Continuando sem enviar imagem`)
+              continue
+            }
+          }
+
+          // Send image with public URL
           const enviado = await enviarImagemWhatsApp(
             telefone,
-            produto.imagem_url,
+            imagemUrlPublica,
             `${produto.nome} - Cartago Burger Grill`,
           )
 
@@ -820,20 +849,16 @@ async function enviarImagemSeProdutoMencionado(
             console.log(`[v0] ❌ Falha ao enviar imagem`)
           }
 
-          // Enviar apenas a primeira imagem encontrada para não sobrecarregar
           break
         } else {
           console.log(`[v0] ⚠️ Produto encontrado mas sem imagem_url`)
         }
-      } else {
-        console.log(`[v0] ❌ Produto não mencionado na resposta`)
       }
     }
 
     console.log("[v0] ===== FIM VERIFICAÇÃO IMAGEM =====")
   } catch (error) {
     console.error("[v0] Erro ao enviar imagem do produto:", error)
-    // Não interrompe o fluxo se houver erro ao enviar imagem
   }
 }
 
