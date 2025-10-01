@@ -262,7 +262,7 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
       )
     }
 
-    const cardapioDinamico = await buscarCardapioDoBanco()
+    const { cardapioTexto, produtosComImagem } = await buscarCardapioDoBanco()
 
     const contextoNegocio = `
     Você é o assistente virtual do Cartago Burger Grill, um restaurante especializado em hambúrgueres artesanais.
@@ -276,7 +276,7 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
     - WhatsApp para pedidos: (41) 99533-6065
     - Localização: Colombo, PR
 
-    ${cardapioDinamico}
+    ${cardapioTexto}
 
     RASTREAMENTO DE PEDIDOS:
     - Se o cliente perguntar sobre rastreamento, status ou localização do pedido, peça o número do pedido
@@ -295,6 +295,7 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
     - SEMPRE responda algo, nunca fique em silêncio
     - Se não entender a pergunta, peça esclarecimento de forma educada
     - Seja natural e conversacional, como um atendente real
+    - Quando mencionar um produto específico, use EXATAMENTE o nome do produto como está no cardápio
     `
 
     console.log("[v0] Chamando API Groq...")
@@ -320,6 +321,8 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
       console.log("[v0] ⚠️ Resposta da IA vazia, usando fallback")
       return "Desculpe, não entendi sua mensagem. Pode reformular? Estou aqui para ajudar com nosso cardápio, pedidos e informações sobre o Cartago Burger Grill! 😊"
     }
+
+    await enviarImagemSeProdutoMencionado(text, produtosComImagem, telefone)
 
     return text
   } catch (error) {
@@ -635,7 +638,10 @@ async function atualizarStatusMensagem(telefone: string, conteudo: string, novoS
   }
 }
 
-async function buscarCardapioDoBanco(): Promise<string> {
+async function buscarCardapioDoBanco(): Promise<{
+  cardapioTexto: string
+  produtosComImagem: Array<{ nome: string; imagem_url: string | null; tipo: string }>
+}> {
   try {
     console.log("[v0] Buscando cardápio do banco de dados...")
 
@@ -643,29 +649,32 @@ async function buscarCardapioDoBanco(): Promise<string> {
 
     const { data: produtos, error: erroProdutos } = await supabase
       .from("produtos")
-      .select("nome, descricao, preco_venda, categoria")
+      .select("nome, descricao, preco_venda, categoria, imagem_url")
       .eq("ativo", true)
       .order("categoria")
       .order("nome")
 
-    // Buscar bebidas ativas
     const { data: bebidas, error: erroBebidas } = await supabase
       .from("bebidas")
-      .select("nome, descricao, preco_venda")
+      .select("nome, descricao, preco_venda, imagem_url")
       .eq("ativo", true)
       .order("nome")
 
-    // Buscar combos ativos
     const { data: combos, error: erroCombos } = await supabase
       .from("combos")
-      .select("nome, descricao, preco_final")
+      .select("nome, descricao, preco_final, imagem_url")
       .eq("ativo", true)
       .order("nome")
 
     if (erroProdutos || erroBebidas || erroCombos) {
       console.error("[v0] Erro ao buscar cardápio:", { erroProdutos, erroBebidas, erroCombos })
-      return "Cardápio temporariamente indisponível"
+      return {
+        cardapioTexto: "Cardápio temporariamente indisponível",
+        produtosComImagem: [],
+      }
     }
+
+    const produtosComImagem: Array<{ nome: string; imagem_url: string | null; tipo: string }> = []
 
     // Formatar cardápio em texto
     let cardapioTexto = "CARDÁPIO CARTAGO BURGER GRILL:\n\n"
@@ -692,6 +701,14 @@ async function buscarCardapioDoBanco(): Promise<string> {
             cardapioTexto += ` (${p.descricao})`
           }
           cardapioTexto += "\n"
+
+          if (p.imagem_url) {
+            produtosComImagem.push({
+              nome: p.nome,
+              imagem_url: p.imagem_url,
+              tipo: "produto",
+            })
+          }
         })
         cardapioTexto += "\n"
       })
@@ -706,6 +723,14 @@ async function buscarCardapioDoBanco(): Promise<string> {
           cardapioTexto += ` (${b.descricao})`
         }
         cardapioTexto += "\n"
+
+        if (b.imagem_url) {
+          produtosComImagem.push({
+            nome: b.nome,
+            imagem_url: b.imagem_url,
+            tipo: "bebida",
+          })
+        }
       })
       cardapioTexto += "\n"
     }
@@ -719,13 +744,118 @@ async function buscarCardapioDoBanco(): Promise<string> {
           cardapioTexto += ` (${c.descricao})`
         }
         cardapioTexto += "\n"
+
+        if (c.imagem_url) {
+          produtosComImagem.push({
+            nome: c.nome,
+            imagem_url: c.imagem_url,
+            tipo: "combo",
+          })
+        }
       })
     }
 
     console.log("[v0] Cardápio carregado com sucesso do banco de dados")
-    return cardapioTexto
+    console.log(`[v0] Total de produtos com imagem: ${produtosComImagem.length}`)
+
+    return {
+      cardapioTexto,
+      produtosComImagem,
+    }
   } catch (error) {
     console.error("[v0] Erro ao buscar cardápio do banco:", error)
-    return "Cardápio temporariamente indisponível"
+    return {
+      cardapioTexto: "Cardápio temporariamente indisponível",
+      produtosComImagem: [],
+    }
+  }
+}
+
+async function enviarImagemSeProdutoMencionado(
+  respostaIA: string,
+  produtosComImagem: Array<{ nome: string; imagem_url: string | null; tipo: string }>,
+  telefone: string,
+) {
+  try {
+    console.log("[v0] Verificando se algum produto foi mencionado na resposta...")
+
+    // Normalizar texto para comparação
+    const respostaNormalizada = respostaIA.toLowerCase()
+
+    // Procurar por produtos mencionados
+    for (const produto of produtosComImagem) {
+      const nomeNormalizado = produto.nome.toLowerCase()
+
+      // Verificar se o nome do produto aparece na resposta
+      if (respostaNormalizada.includes(nomeNormalizado) && produto.imagem_url) {
+        console.log(`[v0] Produto detectado: ${produto.nome}, enviando imagem...`)
+
+        // Enviar imagem do produto
+        await enviarImagemWhatsApp(telefone, produto.imagem_url, `${produto.nome} - Cartago Burger Grill`)
+
+        // Enviar apenas a primeira imagem encontrada para não sobrecarregar
+        break
+      }
+    }
+  } catch (error) {
+    console.error("[v0] Erro ao enviar imagem do produto:", error)
+    // Não interrompe o fluxo se houver erro ao enviar imagem
+  }
+}
+
+async function enviarImagemWhatsApp(para: string, imagemUrl: string, legenda?: string): Promise<boolean> {
+  try {
+    const { data: config } = await supabase.from("whatsapp_config").select("token_whatsapp").single()
+
+    const token = config?.token_whatsapp || process.env.WHATSAPP_ACCESS_TOKEN
+    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID
+
+    console.log("[v0] ===== ENVIANDO IMAGEM WHATSAPP =====")
+    console.log("[v0] Para:", para)
+    console.log("[v0] Imagem URL:", imagemUrl)
+    console.log("[v0] Legenda:", legenda)
+
+    if (!token || !phoneNumberId) {
+      console.error("[v0] ❌ Tokens WhatsApp não configurados")
+      return false
+    }
+
+    const url = `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`
+    const payload = {
+      messaging_product: "whatsapp",
+      to: para,
+      type: "image",
+      image: {
+        link: imagemUrl,
+        caption: legenda || "",
+      },
+    }
+
+    console.log("[v0] Payload da imagem:", JSON.stringify(payload, null, 2))
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    })
+
+    const responseText = await response.text()
+    console.log("[v0] Resposta do envio de imagem:", responseText)
+
+    if (!response.ok) {
+      console.error("[v0] ❌ Erro ao enviar imagem WhatsApp")
+      console.error("[v0] Status:", response.status)
+      console.error("[v0] Resposta:", responseText)
+      return false
+    }
+
+    console.log("[v0] ✅ Imagem enviada com sucesso!")
+    return true
+  } catch (error) {
+    console.error("[v0] ❌ Erro crítico ao enviar imagem:", error)
+    return false
   }
 }
