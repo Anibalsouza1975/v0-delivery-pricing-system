@@ -44,6 +44,10 @@ interface DadosEmpresa {
   }
 }
 
+interface StatusPedidoClienteModuleProps {
+  initialNumero?: string
+}
+
 const statusConfig = {
   pendente: {
     label: "Pedido Recebido",
@@ -96,8 +100,8 @@ const getStatusIcon = (status: string) => {
   }
 }
 
-export default function StatusPedidoClienteModule() {
-  const [numeroPedido, setNumeroPedido] = useState("")
+export default function StatusPedidoClienteModule({ initialNumero = "" }: StatusPedidoClienteModuleProps) {
+  const [numeroPedido, setNumeroPedido] = useState(initialNumero)
   const [pedidoEncontrado, setPedidoEncontrado] = useState<PedidoBD | null>(null)
   const [showDetalhes, setShowDetalhes] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -129,6 +133,12 @@ export default function StatusPedidoClienteModule() {
 
     carregarDadosEmpresa()
   }, [])
+
+  useEffect(() => {
+    if (initialNumero && initialNumero.trim() !== "") {
+      buscarPedido()
+    }
+  }, [initialNumero])
 
   const buscarPedido = async () => {
     if (!numeroPedido.trim()) {
