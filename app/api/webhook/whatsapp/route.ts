@@ -641,11 +641,11 @@ async function buscarCardapioDoBanco(): Promise<string> {
 
     const supabase = await createServerClient()
 
-    // Buscar produtos ativos
     const { data: produtos, error: erroProdutos } = await supabase
       .from("produtos")
-      .select("nome, descricao, preco_venda")
+      .select("nome, descricao, preco_venda, categoria")
       .eq("ativo", true)
+      .order("categoria")
       .order("nome")
 
     // Buscar bebidas ativas
@@ -670,17 +670,31 @@ async function buscarCardapioDoBanco(): Promise<string> {
     // Formatar cardápio em texto
     let cardapioTexto = "CARDÁPIO CARTAGO BURGER GRILL:\n\n"
 
-    // Adicionar produtos
     if (produtos && produtos.length > 0) {
-      cardapioTexto += "🍔 HAMBÚRGUERES:\n"
-      produtos.forEach((p) => {
-        cardapioTexto += `- ${p.nome}: R$ ${p.preco_venda.toFixed(2)}`
-        if (p.descricao) {
-          cardapioTexto += ` (${p.descricao})`
-        }
+      const produtosPorCategoria = produtos.reduce(
+        (acc, produto) => {
+          const categoria = produto.categoria || "Outros"
+          if (!acc[categoria]) {
+            acc[categoria] = []
+          }
+          acc[categoria].push(produto)
+          return acc
+        },
+        {} as Record<string, typeof produtos>,
+      )
+
+      // Adicionar cada categoria
+      Object.entries(produtosPorCategoria).forEach(([categoria, produtosCategoria]) => {
+        cardapioTexto += `🍔 ${categoria.toUpperCase()}:\n`
+        produtosCategoria.forEach((p) => {
+          cardapioTexto += `- ${p.nome}: R$ ${p.preco_venda.toFixed(2)}`
+          if (p.descricao) {
+            cardapioTexto += ` (${p.descricao})`
+          }
+          cardapioTexto += "\n"
+        })
         cardapioTexto += "\n"
       })
-      cardapioTexto += "\n"
     }
 
     // Adicionar bebidas
