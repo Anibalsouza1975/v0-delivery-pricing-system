@@ -793,7 +793,9 @@ async function enviarImagemSeProdutoMencionado(
     console.log("[v0] Resposta da IA:", respostaIA)
 
     const clientePediuImagem =
-      /imagem|foto|mostrar|mostra|ver|visualizar|tem.*imagem|tem.*foto|quero.*ver|me.*mostra/i.test(mensagemCliente)
+      /imagem|foto|mostrar.*imagem|mostrar.*foto|mostra.*imagem|mostra.*foto|ver.*imagem|ver.*foto|visualizar.*imagem|visualizar.*foto|tem.*imagem|tem.*foto|quero.*ver.*imagem|quero.*ver.*foto|me.*mostra.*imagem|me.*mostra.*foto/i.test(
+        mensagemCliente,
+      )
 
     console.log("[v0] Cliente pediu imagem?", clientePediuImagem)
 
