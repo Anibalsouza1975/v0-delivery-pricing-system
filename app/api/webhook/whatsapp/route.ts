@@ -170,19 +170,17 @@ export async function POST(request: NextRequest) {
               const resposta = await processarMensagemComIA(text, from)
               console.log(`[v0] [${requestId}] ✅ Resposta da IA gerada:`, resposta.substring(0, 100) + "...")
 
-              console.log(`[v0] [${requestId}] 💾 Salvando resposta da IA no banco...`)
-              await salvarRespostaNoBanco(from, resposta)
-              console.log(`[v0] [${requestId}] ✅ Resposta da IA salva no banco`)
-
               console.log(`[v0] [${requestId}] 📤 Tentando enviar via WhatsApp...`)
               const enviado = await enviarMensagemWhatsApp(from, resposta)
 
               if (enviado) {
                 console.log(`[v0] [${requestId}] ✅ Mensagem enviada com sucesso via WhatsApp`)
-                await atualizarStatusMensagem(from, resposta, "enviada")
+                console.log(`[v0] [${requestId}] 💾 Salvando resposta com status 'enviada'...`)
+                await salvarRespostaNoBanco(from, resposta)
               } else {
-                console.log(`[v0] [${requestId}] ⚠️ Falha ao enviar via WhatsApp (mas resposta está no banco)`)
-                await atualizarStatusMensagem(from, resposta, "pendente")
+                console.log(`[v0] [${requestId}] ⚠️ Falha ao enviar via WhatsApp`)
+                console.log(`[v0] [${requestId}] 💾 Salvando resposta com status 'erro'...`)
+                await salvarMensagemFalha(from, resposta, "Falha ao enviar via WhatsApp")
               }
             } catch (error) {
               console.error(`[v0] [${requestId}] ❌ Erro ao processar mensagem:`, error)
@@ -543,7 +541,6 @@ async function salvarRespostaNoBanco(telefone: string, resposta: string) {
   try {
     console.log("[v0] Salvando resposta da IA no banco:", telefone)
 
-    // Buscar conversa existente
     const { data: conversa } = await supabase
       .from("whatsapp_conversas")
       .select("id")
@@ -551,24 +548,29 @@ async function salvarRespostaNoBanco(telefone: string, resposta: string) {
       .single()
 
     if (conversa) {
+      const messageId = `ai_${Date.now()}_${Math.random().toString(36).substring(7)}`
+
       const { error } = await supabase.from("whatsapp_mensagens").insert({
         conversa_id: conversa.id,
-        message_id: `ai_${Date.now()}_${Math.random().toString(36).substring(7)}`, // ID único para evitar duplicatas
+        message_id: messageId,
         tipo: "bot",
         conteudo: resposta,
-        status: "pendente", // Salvar com status "pendente" inicialmente, será atualizado após envio
+        status: "enviada",
       })
 
       if (error) {
         console.error("[v0] Erro ao salvar resposta IA:", error)
         console.error("[v0] Detalhes do erro:", JSON.stringify(error, null, 2))
       } else {
-        console.log("[v0] Resposta IA salva com sucesso (status: pendente)")
+        console.log("[v0] Resposta IA salva com sucesso (status: enviada)")
       }
+
+      return messageId
     }
   } catch (error) {
     console.error("[v0] Erro ao salvar resposta IA:", error)
   }
+  return null
 }
 
 async function salvarMensagemFalha(telefone: string, mensagem: string, erro: string) {
@@ -577,7 +579,6 @@ async function salvarMensagemFalha(telefone: string, mensagem: string, erro: str
     console.log("[v0] Telefone:", telefone)
     console.log("[v0] Erro:", erro)
 
-    // Buscar conversa existente
     const { data: conversa } = await supabase
       .from("whatsapp_conversas")
       .select("id")
@@ -590,7 +591,7 @@ async function salvarMensagemFalha(telefone: string, mensagem: string, erro: str
         message_id: `failed_${Date.now()}`,
         tipo: "bot",
         conteudo: mensagem,
-        status: "erro", // Changed from "falha" to "erro"
+        status: "erro",
       })
 
       if (error) {
@@ -606,33 +607,5 @@ async function salvarMensagemFalha(telefone: string, mensagem: string, erro: str
 }
 
 async function atualizarStatusMensagem(telefone: string, conteudo: string, novoStatus: string) {
-  try {
-    console.log("[v0] Atualizando status da mensagem para:", novoStatus)
-
-    // Buscar conversa existente
-    const { data: conversa } = await supabase
-      .from("whatsapp_conversas")
-      .select("id")
-      .eq("cliente_telefone", telefone)
-      .single()
-
-    if (conversa) {
-      const { error } = await supabase
-        .from("whatsapp_mensagens")
-        .update({ status: novoStatus })
-        .eq("conversa_id", conversa.id)
-        .eq("tipo", "bot")
-        .eq("status", "pendente") // Só atualiza se estiver pendente
-        .order("created_at", { ascending: false })
-        .limit(1)
-
-      if (error) {
-        console.error("[v0] Erro ao atualizar status da mensagem:", error)
-      } else {
-        console.log("[v0] Status da mensagem atualizado para:", novoStatus)
-      }
-    }
-  } catch (error) {
-    console.error("[v0] Erro ao atualizar status da mensagem:", error)
-  }
+  console.log("[v0] atualizarStatusMensagem() não é mais usada - salvamos direto com status correto")
 }
