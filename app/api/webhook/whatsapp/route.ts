@@ -224,6 +224,19 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
   try {
     console.log("[v0] Iniciando processamento IA para:", mensagem)
 
+    const { data: mensagensAnteriores } = await supabase
+      .from("whatsapp_mensagens")
+      .select("id")
+      .eq(
+        "conversa_id",
+        (await supabase.from("whatsapp_conversas").select("id").eq("cliente_telefone", telefone).single()).data?.id ||
+          "",
+      )
+      .limit(2)
+
+    const isPrimeiraInteracao = !mensagensAnteriores || mensagensAnteriores.length <= 1
+    console.log("[v0] É primeira interação?", isPrimeiraInteracao)
+
     const isOrderTracking = /rastreio|rastrear|pedido|acompanhar|status.*pedido|onde.*está|número.*pedido/i.test(
       mensagem,
     )
@@ -266,6 +279,34 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
 
     const { cardapioTexto, produtosComImagem } = await buscarCardapioDoBanco()
 
+    const menuUrl = process.env.NEXT_PUBLIC_SITE_URL
+      ? `${process.env.NEXT_PUBLIC_SITE_URL}/cliente`
+      : "https://seu-dominio.vercel.app/cliente"
+
+    const primeiraInteracaoInstrucoes = isPrimeiraInteracao
+      ? `
+    PRIMEIRA INTERAÇÃO DO CLIENTE:
+    - Este é o primeiro contato deste cliente
+    - SEMPRE comece com uma saudação calorosa e apresente o Cartago Burger Grill
+    - SEMPRE mencione que o cliente pode fazer pedidos de duas formas:
+      1. Conversando com você (o assistente virtual)
+      2. Acessando o menu visual através do link: ${menuUrl}
+    - Seja acolhedor e explique que está aqui para ajudar
+    - Exemplo de resposta inicial:
+      "Olá! Seja muito bem-vindo(a) ao Cartago Burger Grill! 🍔
+      
+      Sou seu assistente virtual e estou aqui para ajudar com seu pedido!
+      
+      Você pode fazer seu pedido de duas formas:
+      
+      1️⃣ Conversando comigo aqui mesmo - posso te mostrar o cardápio, tirar dúvidas e anotar seu pedido
+      
+      2️⃣ Acessando nosso menu visual: ${menuUrl}
+      
+      Como prefere continuar? 😊"
+    `
+      : ""
+
     const contextoNegocio = `
     Você é o assistente virtual do Cartago Burger Grill, um restaurante especializado em hambúrgueres artesanais.
 
@@ -277,6 +318,8 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
     - Tempo médio de entrega: 30-45 minutos
     - WhatsApp para pedidos: (41) 99533-6065
     - Localização: Colombo, PR
+
+    ${primeiraInteracaoInstrucoes}
 
     ${cardapioTexto}
 
