@@ -784,26 +784,53 @@ async function enviarImagemSeProdutoMencionado(
   telefone: string,
 ) {
   try {
-    console.log("[v0] Verificando se algum produto foi mencionado na resposta...")
+    console.log("[v0] ===== VERIFICANDO ENVIO DE IMAGEM =====")
+    console.log("[v0] Resposta da IA:", respostaIA)
+    console.log("[v0] Total de produtos com imagem:", produtosComImagem.length)
+    console.log("[v0] Produtos disponíveis:", produtosComImagem.map((p) => p.nome).join(", "))
 
     // Normalizar texto para comparação
     const respostaNormalizada = respostaIA.toLowerCase()
+    console.log("[v0] Resposta normalizada:", respostaNormalizada)
 
     // Procurar por produtos mencionados
     for (const produto of produtosComImagem) {
       const nomeNormalizado = produto.nome.toLowerCase()
+      console.log(`[v0] Verificando produto: "${produto.nome}" (normalizado: "${nomeNormalizado}")`)
+      console.log(`[v0] Imagem URL existe: ${!!produto.imagem_url}`)
+      console.log(`[v0] Imagem URL: ${produto.imagem_url?.substring(0, 50)}...`)
 
       // Verificar se o nome do produto aparece na resposta
-      if (respostaNormalizada.includes(nomeNormalizado) && produto.imagem_url) {
-        console.log(`[v0] Produto detectado: ${produto.nome}, enviando imagem...`)
+      if (respostaNormalizada.includes(nomeNormalizado)) {
+        console.log(`[v0] ✅ MATCH ENCONTRADO! Produto: ${produto.nome}`)
 
-        // Enviar imagem do produto
-        await enviarImagemWhatsApp(telefone, produto.imagem_url, `${produto.nome} - Cartago Burger Grill`)
+        if (produto.imagem_url) {
+          console.log(`[v0] 📤 Enviando imagem do produto: ${produto.nome}`)
 
-        // Enviar apenas a primeira imagem encontrada para não sobrecarregar
-        break
+          // Enviar imagem do produto
+          const enviado = await enviarImagemWhatsApp(
+            telefone,
+            produto.imagem_url,
+            `${produto.nome} - Cartago Burger Grill`,
+          )
+
+          if (enviado) {
+            console.log(`[v0] ✅ Imagem enviada com sucesso!`)
+          } else {
+            console.log(`[v0] ❌ Falha ao enviar imagem`)
+          }
+
+          // Enviar apenas a primeira imagem encontrada para não sobrecarregar
+          break
+        } else {
+          console.log(`[v0] ⚠️ Produto encontrado mas sem imagem_url`)
+        }
+      } else {
+        console.log(`[v0] ❌ Produto não mencionado na resposta`)
       }
     }
+
+    console.log("[v0] ===== FIM VERIFICAÇÃO IMAGEM =====")
   } catch (error) {
     console.error("[v0] Erro ao enviar imagem do produto:", error)
     // Não interrompe o fluxo se houver erro ao enviar imagem
