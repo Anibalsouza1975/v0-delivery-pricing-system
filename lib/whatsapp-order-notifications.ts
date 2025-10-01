@@ -1,21 +1,93 @@
 import { createClient } from "@/lib/supabase/server"
 
+interface OrderItem {
+  nome: string
+  quantidade: number
+  preco: number
+  observacoes?: string
+}
+
 interface OrderNotificationData {
   numeroPedido: string
   clienteNome: string
   clienteTelefone: string
   status: string
   total?: number
+  subtotal?: number
+  taxaEntrega?: number
   enderecoEntrega?: string
+  formaPagamento?: string
+  itens?: OrderItem[]
+  pedidoPago?: boolean
 }
 
-// Mensagens personalizadas para cada status
+const formatarItensPedido = (itens: OrderItem[]): string => {
+  let texto = ""
+
+  itens.forEach((item) => {
+    const precoTotal = item.quantidade * item.preco
+    texto += `${item.quantidade} x ${item.nome}    R$ ${precoTotal.toFixed(2)}\n`
+    if (item.observacoes) {
+      texto += `   Obs: ${item.observacoes}\n`
+    }
+  })
+
+  return texto
+}
+
 const getStatusMessage = (status: string, data: OrderNotificationData): string => {
-  const { numeroPedido, clienteNome, total, enderecoEntrega } = data
+  const {
+    numeroPedido,
+    clienteNome,
+    total,
+    subtotal,
+    taxaEntrega,
+    enderecoEntrega,
+    formaPagamento,
+    itens,
+    pedidoPago,
+  } = data
 
   switch (status) {
     case "pendente":
-      return `🎉 *Pedido Confirmado!*\n\nOlá ${clienteNome}!\n\nSeu pedido *${numeroPedido}* foi recebido com sucesso!\n\n💰 Total: R$ ${total?.toFixed(2)}\n📍 Endereço: ${enderecoEntrega}\n\nEstamos processando seu pedido. Em breve você receberá atualizações! 😊`
+      let mensagemInicial = `🎉 *Pedido Confirmado!*\n\nOlá ${clienteNome}!\n\nSeu pedido *${numeroPedido}* foi recebido com sucesso!\n\n`
+
+      // Adicionar itens do pedido
+      if (itens && itens.length > 0) {
+        mensagemInicial += `📋 *ITENS DO PEDIDO:*\n`
+        mensagemInicial += formatarItensPedido(itens)
+        mensagemInicial += `\n`
+      }
+
+      // Adicionar totais
+      if (subtotal) {
+        mensagemInicial += `💰 SUBTOTAL: R$ ${subtotal.toFixed(2)}\n`
+      }
+      if (taxaEntrega) {
+        mensagemInicial += `🚚 + ENTREGA: R$ ${taxaEntrega.toFixed(2)}\n`
+      }
+      if (total) {
+        mensagemInicial += `💵 = TOTAL A PAGAR: R$ ${total.toFixed(2)}\n\n`
+      }
+
+      // Adicionar forma de pagamento
+      if (formaPagamento) {
+        mensagemInicial += `💳 FORMA DE PAGAMENTO: ${formaPagamento.toUpperCase()}\n\n`
+      }
+
+      // Adicionar status de pagamento
+      if (pedidoPago) {
+        mensagemInicial += `✅ *** PEDIDO JÁ PAGO ***\n\n`
+      }
+
+      // Adicionar endereço
+      if (enderecoEntrega) {
+        mensagemInicial += `📍 Endereço: ${enderecoEntrega}\n\n`
+      }
+
+      mensagemInicial += `Estamos processando seu pedido. Você receberá atualizações automáticas a cada mudança de status! 😊`
+
+      return mensagemInicial
 
     case "confirmado":
       return `✅ *Pedido Confirmado!*\n\nOlá ${clienteNome}!\n\nSeu pedido *${numeroPedido}* foi confirmado!\n\nEm breve começaremos a preparar. Tempo estimado: 30-40 minutos ⏱️`
@@ -85,6 +157,32 @@ export async function enviarNotificacaoPedido(data: OrderNotificationData): Prom
 
     console.log("[v0] 📤 Enviando mensagem via WhatsApp API...")
 
+    let messageBody: any
+
+    if (status === "pendente") {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://seu-site.vercel.app"
+      const trackingUrl = `${siteUrl}/acompanhar-pedido?numero=${data.numeroPedido}`
+
+      messageBody = {
+        messaging_product: "whatsapp",
+        to: telefoneCompleto,
+        type: "text",
+        text: {
+          preview_url: true,
+          body: mensagem + `\n\n🔍 Acompanhe seu pedido: ${trackingUrl}`,
+        },
+      }
+    } else {
+      messageBody = {
+        messaging_product: "whatsapp",
+        to: telefoneCompleto,
+        type: "text",
+        text: {
+          body: mensagem,
+        },
+      }
+    }
+
     // Enviar mensagem via WhatsApp Graph API
     const response = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
       method: "POST",
@@ -92,14 +190,7 @@ export async function enviarNotificacaoPedido(data: OrderNotificationData): Prom
         Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        messaging_product: "whatsapp",
-        to: telefoneCompleto,
-        type: "text",
-        text: {
-          body: mensagem,
-        },
-      }),
+      body: JSON.stringify(messageBody),
     })
 
     const result = await response.json()

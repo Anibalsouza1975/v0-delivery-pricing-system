@@ -49,7 +49,13 @@ export async function POST(request: NextRequest) {
       clienteTelefone: pedido.cliente.telefone,
       status: data.status,
       total: data.total,
+      subtotal: data.subtotal,
+      taxaEntrega: data.taxa_entrega,
       enderecoEntrega: pedido.cliente.endereco,
+      formaPagamento: pedido.formaPagamento,
+      itens: pedido.itens,
+      pedidoPago:
+        pedido.formaPagamento?.toLowerCase().includes("pix") || pedido.formaPagamento?.toLowerCase().includes("cartão"),
     }).catch((err) => {
       console.error("[v0] Erro ao enviar notificação WhatsApp:", err)
       // Não falhar a criação do pedido por causa da notificação
