@@ -296,8 +296,9 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
     - SEMPRE comece com uma saudação calorosa e apresente o Cartago Burger Grill
     - SEMPRE mencione que o cliente pode fazer pedidos de duas formas:
       1. Conversando com você (o assistente virtual)
-      2. Acessando o menu visual através do link: ${menuUrl}
+      2. Acessando o menu visual (um botão será enviado automaticamente)
     - Seja acolhedor e explique que está aqui para ajudar
+    - NÃO inclua links na sua resposta, apenas mencione que um botão será enviado
     - Exemplo de resposta inicial:
       "Olá! Seja muito bem-vindo(a) ao Cartago Burger Grill! 🍔
       
@@ -307,7 +308,7 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
       
       1️⃣ Conversando comigo aqui mesmo - posso te mostrar o cardápio, tirar dúvidas e anotar seu pedido
       
-      2️⃣ Acessando nosso menu visual: ${menuUrl}
+      2️⃣ Acessando nosso menu visual através do botão que vou enviar
       
       Como prefere continuar? 😊"
     `
@@ -317,8 +318,8 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
       ? `
     IMPORTANTE - CLIENTE PEDIU O CARDÁPIO/MENU:
     - O cliente está pedindo para ver o cardápio/menu
-    - SEMPRE inclua o link do menu visual na sua resposta: ${menuUrl}
-    - Você pode listar algumas opções principais E também oferecer o link para visualização completa
+    - NÃO inclua links na sua resposta
+    - Você pode listar algumas opções principais e mencionar que um botão para o menu completo será enviado
     - Exemplo de resposta:
       "Claro! Temos várias opções deliciosas! 🍔
       
@@ -327,7 +328,7 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
       - Acompanhamentos (Batata Frita Grande)
       - Bebidas e Combos
       
-      Para ver nosso cardápio completo com fotos e preços, acesse: ${menuUrl}
+      Vou enviar um botão para você acessar nosso cardápio completo com fotos e preços!
       
       Posso te ajudar com algum produto específico? 😊"
     `
@@ -367,7 +368,7 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
     INSTRUÇÕES:
     - Seja cordial, amigável e prestativo
     - Ofereça o cardápio quando perguntado
-    - SEMPRE inclua o link do menu visual (${menuUrl}) quando o cliente pedir o cardápio/menu
+    - NÃO inclua links nas suas respostas (o sistema enviará botões automaticamente)
     - Ajude com pedidos de forma clara
     - Informe sobre tempo de entrega quando relevante
     - Para rastreamento, sempre peça o número do pedido
@@ -404,6 +405,18 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
       return "Desculpe, não entendi sua mensagem. Pode reformular? Estou aqui para ajudar com nosso cardápio, pedidos e informações sobre o Cartago Burger Grill! 😊"
     }
 
+    if (isPrimeiraInteracao || clientePediuMenu) {
+      console.log("[v0] 🔘 Enviando botão do menu após resposta da IA...")
+      setTimeout(async () => {
+        await enviarMensagemComBotao(
+          telefone,
+          "Clique no botão abaixo para acessar nosso cardápio completo com fotos e preços! 📱",
+          "Ver Cardápio 🍔",
+          menuUrl,
+        )
+      }, 1000) // Wait 1 second after main message
+    }
+
     await enviarImagemSeProdutoMencionado(text, produtosComImagem, telefone, mensagem)
 
     return text
@@ -411,45 +424,6 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
     console.error("[v0] Erro ao processar IA:", error)
     return "Desculpe, estou com dificuldades técnicas no momento. Um atendente humano entrará em contato em breve! 🤖"
   }
-}
-
-function getStatusEmoji(status: string): string {
-  const emojis: Record<string, string> = {
-    pendente: "⏳",
-    confirmado: "✅",
-    preparando: "👨‍🍳",
-    pronto: "🍔",
-    saiu_entrega: "🚗",
-    entregue: "✅",
-    cancelado: "❌",
-  }
-  return emojis[status] || "📦"
-}
-
-function getStatusTexto(status: string): string {
-  const textos: Record<string, string> = {
-    pendente: "Aguardando confirmação",
-    confirmado: "Pedido confirmado",
-    preparando: "Em preparação",
-    pronto: "Pronto para retirada/entrega",
-    saiu_entrega: "Saiu para entrega",
-    entregue: "Entregue",
-    cancelado: "Cancelado",
-  }
-  return textos[status] || "Status desconhecido"
-}
-
-function getStatusMensagem(status: string): string {
-  const mensagens: Record<string, string> = {
-    pendente: "Estamos processando seu pedido. Em breve você receberá a confirmação!",
-    confirmado: "Seu pedido foi confirmado e já está sendo preparado!",
-    preparando: "Nosso chef está preparando seu pedido com todo carinho! 👨‍🍳",
-    pronto: "Seu pedido está pronto! Se for delivery, sairá em breve. Se for retirada, pode vir buscar!",
-    saiu_entrega: "Seu pedido saiu para entrega! Chegará em breve. 🚗",
-    entregue: "Seu pedido foi entregue! Bom apetite! 🍔",
-    cancelado: "Seu pedido foi cancelado. Entre em contato conosco para mais informações.",
-  }
-  return mensagens[status] || "Entre em contato conosco para mais informações."
 }
 
 async function enviarMensagemWhatsApp(para: string, mensagem: string): Promise<boolean> {
@@ -551,6 +525,78 @@ async function enviarMensagemWhatsApp(para: string, mensagem: string): Promise<b
       mensagem,
       `Erro crítico: ${error instanceof Error ? error.message : "Unknown error"}`,
     )
+    return false
+  }
+}
+
+async function enviarMensagemComBotao(
+  para: string,
+  mensagem: string,
+  textoBotao: string,
+  urlBotao: string,
+): Promise<boolean> {
+  try {
+    const { data: config } = await supabase.from("whatsapp_config").select("token_whatsapp").single()
+
+    const token = config?.token_whatsapp || process.env.WHATSAPP_ACCESS_TOKEN
+    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID
+
+    console.log("[v0] ===== ENVIANDO MENSAGEM COM BOTÃO WHATSAPP =====")
+    console.log("[v0] Para:", para)
+    console.log("[v0] Mensagem:", mensagem)
+    console.log("[v0] Botão:", textoBotao)
+    console.log("[v0] URL:", urlBotao)
+
+    if (!token || !phoneNumberId) {
+      console.error("[v0] ❌ Tokens WhatsApp não configurados")
+      return false
+    }
+
+    const url = `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`
+    const payload = {
+      messaging_product: "whatsapp",
+      to: para,
+      type: "interactive",
+      interactive: {
+        type: "cta_url",
+        body: {
+          text: mensagem,
+        },
+        action: {
+          name: "cta_url",
+          parameters: {
+            display_text: textoBotao,
+            url: urlBotao,
+          },
+        },
+      },
+    }
+
+    console.log("[v0] Payload com botão:", JSON.stringify(payload, null, 2))
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    })
+
+    const responseText = await response.text()
+    console.log("[v0] Resposta:", responseText)
+
+    if (!response.ok) {
+      console.error("[v0] ❌ Erro ao enviar mensagem com botão")
+      console.error("[v0] Status:", response.status)
+      console.error("[v0] Resposta:", responseText)
+      return false
+    }
+
+    console.log("[v0] ✅ Mensagem com botão enviada com sucesso!")
+    return true
+  } catch (error) {
+    console.error("[v0] ❌ Erro ao enviar mensagem com botão:", error)
     return false
   }
 }
@@ -1000,4 +1046,43 @@ async function enviarImagemWhatsApp(para: string, imagemUrl: string, legenda?: s
     console.error("[v0] ❌ Erro crítico ao enviar imagem:", error)
     return false
   }
+}
+
+function getStatusEmoji(status: string): string {
+  const emojis: Record<string, string> = {
+    pendente: "⏳",
+    confirmado: "✅",
+    preparando: "👨‍🍳",
+    pronto: "🍔",
+    saiu_entrega: "🚗",
+    entregue: "✅",
+    cancelado: "❌",
+  }
+  return emojis[status] || "📦"
+}
+
+function getStatusTexto(status: string): string {
+  const textos: Record<string, string> = {
+    pendente: "Aguardando confirmação",
+    confirmado: "Pedido confirmado",
+    preparando: "Em preparação",
+    pronto: "Pronto para retirada/entrega",
+    saiu_entrega: "Saiu para entrega",
+    entregue: "Entregue",
+    cancelado: "Cancelado",
+  }
+  return textos[status] || "Status desconhecido"
+}
+
+function getStatusMensagem(status: string): string {
+  const mensagens: Record<string, string> = {
+    pendente: "Estamos processando seu pedido. Em breve você receberá a confirmação!",
+    confirmado: "Seu pedido foi confirmado e já está sendo preparado!",
+    preparando: "Nosso chef está preparando seu pedido com todo carinho! 👨‍🍳",
+    pronto: "Seu pedido está pronto! Se for delivery, sairá em breve. Se for retirada, pode vir buscar!",
+    saiu_entrega: "Seu pedido saiu para entrega! Chegará em breve. 🚗",
+    entregue: "Seu pedido foi entregue! Bom apetite! 🍔",
+    cancelado: "Seu pedido foi cancelado. Entre em contato conosco para mais informações.",
+  }
+  return mensagens[status] || "Entre em contato conosco para mais informações."
 }
