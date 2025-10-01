@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
           id,
           tipo,
           conteudo,
+          status,
           created_at
         )
       `)
@@ -41,12 +42,15 @@ export async function GET(request: NextRequest) {
         ultimaMensagem: conversa.ultima_mensagem || "Sem mensagens",
         timestamp: new Date(conversa.updated_at),
         mensagens:
-          conversa.whatsapp_mensagens?.map((msg: any) => ({
-            id: msg.id,
-            tipo: msg.tipo,
-            conteudo: msg.conteudo,
-            timestamp: new Date(msg.created_at),
-          })) || [],
+          conversa.whatsapp_mensagens
+            ?.sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+            .map((msg: any) => ({
+              id: msg.id,
+              tipo: msg.tipo,
+              conteudo: msg.conteudo,
+              status: msg.status,
+              timestamp: new Date(msg.created_at),
+            })) || [],
       })) || []
 
     return NextResponse.json({ success: true, conversas })

@@ -556,13 +556,14 @@ async function salvarRespostaNoBanco(telefone: string, resposta: string) {
         message_id: `ai_${Date.now()}`,
         tipo: "bot",
         conteudo: resposta,
-        status: "pendente", // Changed from "enviada" to "pendente"
+        status: "enviada", // Changed from "pendente" to "enviada"
       })
 
       if (error) {
         console.error("[v0] Erro ao salvar resposta IA:", error)
+        console.error("[v0] Detalhes do erro:", JSON.stringify(error, null, 2))
       } else {
-        console.log("[v0] Resposta IA salva com sucesso (status: pendente)")
+        console.log("[v0] Resposta IA salva com sucesso (status: enviada)")
       }
     }
   } catch (error) {
@@ -584,18 +585,17 @@ async function salvarMensagemFalha(telefone: string, mensagem: string, erro: str
       .single()
 
     if (conversa) {
-      // Salvar mensagem com status de falha
       const { error } = await supabase.from("whatsapp_mensagens").insert({
         conversa_id: conversa.id,
         message_id: `failed_${Date.now()}`,
         tipo: "bot",
         conteudo: mensagem,
-        status: "falha", // Mark as failed
-        metadata: { erro, timestamp: new Date().toISOString() },
+        status: "erro", // Changed from "falha" to "erro"
       })
 
       if (error) {
         console.error("[v0] Erro ao salvar mensagem com falha:", error)
+        console.error("[v0] Detalhes do erro:", JSON.stringify(error, null, 2))
       } else {
         console.log("[v0] ✅ Mensagem com falha salva para retry posterior")
       }
