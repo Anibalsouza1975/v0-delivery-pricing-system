@@ -168,20 +168,16 @@ export async function enviarNotificacaoPedido(data: OrderNotificationData): Prom
         to: telefoneCompleto,
         type: "interactive",
         interactive: {
-          type: "button",
+          type: "cta_url",
           body: {
             text: mensagem,
           },
           action: {
-            buttons: [
-              {
-                type: "reply",
-                reply: {
-                  id: `track_${data.numeroPedido}`,
-                  title: "🔍 Acompanhar Pedido",
-                },
-              },
-            ],
+            name: "cta_url",
+            parameters: {
+              display_text: "🔍 Acompanhar Pedido",
+              url: trackingUrl,
+            },
           },
         },
       }
@@ -214,31 +210,6 @@ export async function enviarNotificacaoPedido(data: OrderNotificationData): Prom
     }
 
     console.log("[v0] ✅ Mensagem enviada com sucesso:", result.messages?.[0]?.id)
-
-    if (status === "pendente") {
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://seu-site.vercel.app"
-      const trackingUrl = `${siteUrl}/acompanhar-pedido?numero=${data.numeroPedido}`
-
-      // Send tracking link as a separate message
-      const followUpMessage = {
-        messaging_product: "whatsapp",
-        to: telefoneCompleto,
-        type: "text",
-        text: {
-          preview_url: true,
-          body: `🔗 Link direto: ${trackingUrl}`,
-        },
-      }
-
-      await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(followUpMessage),
-      })
-    }
 
     // Salvar mensagem no banco de dados
     try {
