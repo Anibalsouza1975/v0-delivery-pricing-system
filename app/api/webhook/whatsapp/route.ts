@@ -287,10 +287,11 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
 
     IMAGENS DOS PRODUTOS:
     - VOCÊ TEM ACESSO A IMAGENS dos produtos do cardápio
-    - Quando o cliente perguntar sobre a imagem de um produto, mencione o nome EXATO do produto na sua resposta
+    - Quando o cliente perguntar ESPECIFICAMENTE sobre a imagem de um produto, mencione o nome EXATO do produto na sua resposta
     - O sistema automaticamente enviará a imagem quando você mencionar o produto
     - Seja natural e diga algo como "Vou te mostrar o [nome do produto]!" ou "Aqui está o [nome do produto]!"
     - NUNCA diga que não tem acesso a imagens
+    - IMPORTANTE: Só mencione produtos específicos quando o cliente perguntar sobre eles, não liste vários produtos ao mesmo tempo
 
     INSTRUÇÕES:
     - Seja cordial, amigável e prestativo
@@ -331,7 +332,7 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
       return "Desculpe, não entendi sua mensagem. Pode reformular? Estou aqui para ajudar com nosso cardápio, pedidos e informações sobre o Cartago Burger Grill! 😊"
     }
 
-    await enviarImagemSeProdutoMencionado(text, produtosComImagem, telefone)
+    await enviarImagemSeProdutoMencionado(text, produtosComImagem, telefone, mensagem)
 
     return text
   } catch (error) {
@@ -784,20 +785,32 @@ async function enviarImagemSeProdutoMencionado(
   respostaIA: string,
   produtosComImagem: Array<{ nome: string; imagem_url: string | null; tipo: string }>,
   telefone: string,
+  mensagemCliente: string,
 ) {
   try {
     console.log("[v0] ===== VERIFICANDO ENVIO DE IMAGEM =====")
+    console.log("[v0] Mensagem do cliente:", mensagemCliente)
     console.log("[v0] Resposta da IA:", respostaIA)
+
+    const clientePediuImagem =
+      /imagem|foto|mostrar|mostra|ver|visualizar|tem.*imagem|tem.*foto|quero.*ver|me.*mostra/i.test(mensagemCliente)
+
+    console.log("[v0] Cliente pediu imagem?", clientePediuImagem)
+
+    if (!clientePediuImagem) {
+      console.log("[v0] ⏭️ Cliente não pediu imagem, pulando envio")
+      console.log("[v0] ===== FIM VERIFICAÇÃO IMAGEM =====")
+      return
+    }
+
+    console.log("[v0] ✅ Cliente pediu imagem, verificando produtos mencionados...")
     console.log("[v0] Total de produtos com imagem:", produtosComImagem.length)
-    console.log("[v0] Produtos disponíveis:", produtosComImagem.map((p) => p.nome).join(", "))
 
     const respostaNormalizada = respostaIA.toLowerCase()
-    console.log("[v0] Resposta normalizada:", respostaNormalizada)
 
     for (const produto of produtosComImagem) {
       const nomeNormalizado = produto.nome.toLowerCase()
-      console.log(`[v0] Verificando produto: "${produto.nome}" (normalizado: "${nomeNormalizado}")`)
-      console.log(`[v0] Imagem URL existe: ${!!produto.imagem_url}`)
+      console.log(`[v0] Verificando produto: "${produto.nome}"`)
 
       if (respostaNormalizada.includes(nomeNormalizado)) {
         console.log(`[v0] ✅ MATCH ENCONTRADO! Produto: ${produto.nome}`)
@@ -812,15 +825,12 @@ async function enviarImagemSeProdutoMencionado(
             console.log(`[v0] 🔄 Imagem em base64 detectada, fazendo upload para Blob...`)
 
             try {
-              // Extract base64 data
               const base64Data = produto.imagem_url.split(",")[1]
               const mimeType = produto.imagem_url.match(/data:(.*?);/)?.[1] || "image/jpeg"
               const extension = mimeType.split("/")[1]
 
-              // Convert base64 to buffer
               const buffer = Buffer.from(base64Data, "base64")
 
-              // Upload to Vercel Blob
               const filename = `produtos/${produto.tipo}/${produto.nome.toLowerCase().replace(/\s+/g, "-")}-${Date.now()}.${extension}`
               const blob = await put(filename, buffer, {
                 access: "public",
@@ -836,7 +846,6 @@ async function enviarImagemSeProdutoMencionado(
             }
           }
 
-          // Send image with public URL
           const enviado = await enviarImagemWhatsApp(
             telefone,
             imagemUrlPublica,
