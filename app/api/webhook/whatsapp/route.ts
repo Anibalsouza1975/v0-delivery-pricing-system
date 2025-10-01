@@ -283,6 +283,13 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
     - Explique que com o número do pedido você pode consultar o status em tempo real
     - Seja educado e prestativo
 
+    IMAGENS DOS PRODUTOS:
+    - VOCÊ TEM ACESSO A IMAGENS dos produtos do cardápio
+    - Quando o cliente perguntar sobre a imagem de um produto, mencione o nome EXATO do produto na sua resposta
+    - O sistema automaticamente enviará a imagem quando você mencionar o produto
+    - Seja natural e diga algo como "Vou te mostrar o [nome do produto]!" ou "Aqui está o [nome do produto]!"
+    - NUNCA diga que não tem acesso a imagens
+
     INSTRUÇÕES:
     - Seja cordial, amigável e prestativo
     - Ofereça o cardápio quando perguntado
