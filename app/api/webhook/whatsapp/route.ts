@@ -160,15 +160,29 @@ export async function POST(request: NextRequest) {
           }
 
           mensagensProcessadas.add(messageId)
-          console.log(`[v0] [${requestId}] ✅ Mensagem marcada como processada`)
 
           if (text && message.type === "text") {
-            console.log(`[v0] [${requestId}] 🤖 Iniciando processamento com IA...`)
+            console.log(`[v0] [${requestId}] 🤖 Iniciando processamento...`)
 
             try {
+              const { data: botControl } = await supabase
+                .from("bot_control")
+                .select("bot_ativo")
+                .eq("telefone", from)
+                .single()
+
+              const botAtivo = botControl?.bot_ativo ?? true
+
+              console.log(`[v0] [${requestId}] Bot ativo para ${from}:`, botAtivo)
+
               console.log(`[v0] [${requestId}] 💾 Salvando mensagem do cliente no banco...`)
               await salvarConversaNoBanco(from, text, messageId)
               console.log(`[v0] [${requestId}] ✅ Mensagem do cliente salva`)
+
+              if (!botAtivo) {
+                console.log(`[v0] [${requestId}] ⏸️ Bot desativado para este número - modo manual ativo`)
+                continue
+              }
 
               console.log(`[v0] [${requestId}] 🧠 Gerando resposta com Groq AI...`)
               const resposta = await processarMensagemComIA(text, from)
@@ -190,10 +204,7 @@ export async function POST(request: NextRequest) {
               }
             } catch (error) {
               console.error(`[v0] [${requestId}] ❌ Erro ao processar mensagem:`, error)
-              console.error(`[v0] [${requestId}] Stack:`, error instanceof Error ? error.stack : "No stack")
             }
-          } else {
-            console.log(`[v0] [${requestId}] ⏭️ Mensagem não é de texto, tipo:`, message.type)
           }
         }
       } else {
