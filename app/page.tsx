@@ -46,8 +46,9 @@ import PrecificacaoAutomaticaModule from "@/components/modules/precificacao-auto
 import AjudaTutorialModule from "@/components/modules/ajuda-tutorial" // Added import for help tutorial module
 import AutoAtendimentoWhatsAppModule from "@/components/modules/auto-atendimento-whatsapp" // Added import for WhatsApp module
 import DiagnosticoBDModule from "@/components/modules/diagnostico-bd" // Added import for database diagnostic module
-import LoadingScreen from "@/components/loading-screen"
-import MigrationHelper from "@/components/migration-helper"
+import GerenciamentoReclamacoesModule from "@/components/modules/gerenciamento-reclamacoes" // Added import for complaints module
+import LoadingScreen from "@/components/loading-screen" // Added import for LoadingScreen
+import MigrationHelper from "@/components/migration-helper" // Added import for MigrationHelper
 
 // Tipos para o sistema
 export interface CustoFixo {
@@ -294,6 +295,14 @@ const modules = [
     icon: Database,
     color: "bg-gray-500",
   },
+  {
+    id: "gerenciamento-reclamacoes",
+    title: "Gerenciamento de Reclamações",
+    description:
+      "Gerencie tickets de suporte e reclamações dos clientes via WhatsApp com sistema completo de atendimento.",
+    icon: MessageCircle,
+    color: "bg-rose-600",
+  },
 ]
 
 export default function DeliveryPricingSystem() {
@@ -401,6 +410,8 @@ export default function DeliveryPricingSystem() {
         return <ControleEstoqueModule />
       case "migration":
         return <MigrationHelper />
+      case "gerenciamento-reclamacoes":
+        return <GerenciamentoReclamacoesModule />
       default:
         return (
           <Card>
