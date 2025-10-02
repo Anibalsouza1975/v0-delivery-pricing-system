@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -28,6 +28,10 @@ import {
   User,
   XCircle,
   RefreshCw,
+  Send,
+  Bot,
+  BotOff,
+  X,
 } from "lucide-react"
 
 interface Reclamacao {
@@ -43,6 +47,15 @@ interface Reclamacao {
   data_criacao: string
   data_atualizacao: string
   data_resolucao?: string
+}
+
+interface ChatWindow {
+  id: string
+  reclamacao: Reclamacao
+  mensagens: any[]
+  novaMensagem: string
+  enviandoMensagem: boolean
+  botAtivo: boolean
 }
 
 const categorias = [
@@ -69,6 +82,9 @@ export default function GerenciamentoReclamacoesModule() {
   const [busca, setBusca] = useState("")
   const [resposta, setResposta] = useState("")
   const [novoStatus, setNovoStatus] = useState<string>("")
+
+  const [chatWindows, setChatWindows] = useState<ChatWindow[]>([])
+  const chatEndRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
 
   const carregarReclamacoes = async () => {
     setIsLoading(true)
@@ -116,6 +132,161 @@ export default function GerenciamentoReclamacoesModule() {
       alert("Erro ao atualizar reclamação. Tente novamente.")
     }
   }
+
+  const verificarStatusBot = async (telefone: string): Promise<boolean> => {
+    try {
+      const response = await fetch(`/api/whatsapp/bot-control?telefone=${telefone}`)
+      if (!response.ok) return true // Default: bot ativo
+
+      const data = await response.json()
+      return data.bot_ativo
+    } catch (error) {
+      console.error("Erro ao verificar status do bot:", error)
+      return true
+    }
+  }
+
+  const alternarBot = async (telefone: string, ativar: boolean) => {
+    try {
+      const response = await fetch("/api/whatsapp/bot-control", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          telefone,
+          bot_ativo: ativar,
+          motivo: ativar ? null : "Atendimento manual via chat",
+          desativado_por: "Atendente",
+        }),
+      })
+
+      if (!response.ok) throw new Error("Erro ao alterar status do bot")
+
+      // Update chat window bot status
+      setChatWindows((prev) =>
+        prev.map((chat) => (chat.reclamacao.cliente_telefone === telefone ? { ...chat, botAtivo: ativar } : chat)),
+      )
+
+      console.log(`[v0] Bot ${ativar ? "ativado" : "desativado"} para ${telefone}`)
+    } catch (error) {
+      console.error("Erro ao alterar status do bot:", error)
+      alert("Erro ao alterar status do bot. Tente novamente.")
+    }
+  }
+
+  const carregarMensagensChat = async (chatId: string, telefone: string) => {
+    try {
+      const response = await fetch(`/api/whatsapp/conversas?telefone=${telefone}`)
+      if (!response.ok) throw new Error("Erro ao carregar mensagens")
+
+      const data = await response.json()
+      const mensagens =
+        data.success && data.conversas && data.conversas.length > 0 ? data.conversas[0].mensagens || [] : []
+
+      setChatWindows((prev) => prev.map((chat) => (chat.id === chatId ? { ...chat, mensagens } : chat)))
+    } catch (error) {
+      console.error("Erro ao carregar mensagens:", error)
+    }
+  }
+
+  const enviarMensagem = async (chatId: string) => {
+    const chat = chatWindows.find((c) => c.id === chatId)
+    if (!chat || !chat.novaMensagem.trim()) return
+
+    setChatWindows((prev) => prev.map((c) => (c.id === chatId ? { ...c, enviandoMensagem: true } : c)))
+
+    try {
+      const response = await fetch("/api/whatsapp/send-message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: chat.reclamacao.cliente_telefone,
+          message: chat.novaMensagem,
+          tipo: "atendente",
+        }),
+      })
+
+      if (!response.ok) throw new Error("Erro ao enviar mensagem")
+
+      // Clear message and reload
+      setChatWindows((prev) => prev.map((c) => (c.id === chatId ? { ...c, novaMensagem: "" } : c)))
+
+      await carregarMensagensChat(chatId, chat.reclamacao.cliente_telefone)
+
+      // Scroll to bottom
+      setTimeout(() => {
+        chatEndRefs.current[chatId]?.scrollIntoView({ behavior: "smooth" })
+      }, 100)
+    } catch (error) {
+      console.error("Erro ao enviar mensagem:", error)
+      alert("Erro ao enviar mensagem. Tente novamente.")
+    } finally {
+      setChatWindows((prev) => prev.map((c) => (c.id === chatId ? { ...c, enviandoMensagem: false } : c)))
+    }
+  }
+
+  const abrirChat = async (reclamacao: Reclamacao) => {
+    // Check if chat is already open
+    const existingChat = chatWindows.find((c) => c.reclamacao.id === reclamacao.id)
+    if (existingChat) {
+      alert("Este chat já está aberto!")
+      return
+    }
+
+    // Check bot status
+    const botAtivo = await verificarStatusBot(reclamacao.cliente_telefone)
+
+    // Create new chat window
+    const newChat: ChatWindow = {
+      id: reclamacao.id,
+      reclamacao,
+      mensagens: [],
+      novaMensagem: "",
+      enviandoMensagem: false,
+      botAtivo,
+    }
+
+    setChatWindows((prev) => [...prev, newChat])
+
+    // Disable bot automatically when opening chat
+    if (botAtivo) {
+      await alternarBot(reclamacao.cliente_telefone, false)
+    }
+
+    // Load messages
+    await carregarMensagensChat(reclamacao.id, reclamacao.cliente_telefone)
+  }
+
+  const fecharChat = async (chatId: string) => {
+    const chat = chatWindows.find((c) => c.id === chatId)
+    if (!chat) return
+
+    // Reactivate bot when closing chat
+    if (!chat.botAtivo) {
+      await alternarBot(chat.reclamacao.cliente_telefone, true)
+    }
+
+    setChatWindows((prev) => prev.filter((c) => c.id !== chatId))
+  }
+
+  useEffect(() => {
+    if (chatWindows.length === 0) return
+
+    const interval = setInterval(() => {
+      chatWindows.forEach((chat) => {
+        carregarMensagensChat(chat.id, chat.reclamacao.cliente_telefone)
+      })
+    }, 10000)
+
+    return () => clearInterval(interval)
+  }, [chatWindows])
+
+  useEffect(() => {
+    chatWindows.forEach((chat) => {
+      if (chat.mensagens.length > 0) {
+        chatEndRefs.current[chat.id]?.scrollIntoView({ behavior: "smooth" })
+      }
+    })
+  }, [chatWindows])
 
   useEffect(() => {
     carregarReclamacoes()
@@ -354,8 +525,13 @@ export default function GerenciamentoReclamacoesModule() {
         )}
       </div>
 
-      <Dialog open={!!reclamacaoSelecionada} onOpenChange={() => setReclamacaoSelecionada(null)}>
-        <DialogContent className="max-w-2xl">
+      <Dialog
+        open={!!reclamacaoSelecionada}
+        onOpenChange={() => {
+          setReclamacaoSelecionada(null)
+        }}
+      >
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               Ticket #{reclamacaoSelecionada?.numero_ticket}
@@ -363,11 +539,11 @@ export default function GerenciamentoReclamacoesModule() {
                 {statusConfig[reclamacaoSelecionada?.status || "aberto"].label}
               </Badge>
             </DialogTitle>
-            <DialogDescription>Detalhes e resposta da reclamação</DialogDescription>
+            <DialogDescription>Detalhes e atendimento da reclamação</DialogDescription>
           </DialogHeader>
 
           {reclamacaoSelecionada && (
-            <div className="space-y-4">
+            <div className="flex-1 overflow-y-auto space-y-4 pr-2">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-xs text-muted-foreground">Cliente</Label>
@@ -435,13 +611,142 @@ export default function GerenciamentoReclamacoesModule() {
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setReclamacaoSelecionada(null)}>
-              Cancelar
+            <Button
+              variant="outline"
+              onClick={() => {
+                setReclamacaoSelecionada(null)
+              }}
+            >
+              Fechar
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (reclamacaoSelecionada) {
+                  abrirChat(reclamacaoSelecionada)
+                  setReclamacaoSelecionada(null)
+                }
+              }}
+            >
+              <MessageSquare className="h-4 w-4 mr-2" />
+              Abrir Chat
             </Button>
             <Button onClick={atualizarReclamacao}>Salvar Alterações</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <div className="fixed bottom-4 right-4 flex gap-4 z-50">
+        {chatWindows.map((chat) => (
+          <Card key={chat.id} className="w-96 h-[600px] flex flex-col shadow-2xl">
+            <CardHeader className="pb-3 border-b">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4" />
+                    {chat.reclamacao.cliente_nome}
+                  </CardTitle>
+                  <CardDescription className="text-xs">Ticket #{chat.reclamacao.numero_ticket}</CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant={chat.botAtivo ? "default" : "outline"}
+                    onClick={() => alternarBot(chat.reclamacao.cliente_telefone, !chat.botAtivo)}
+                    title={chat.botAtivo ? "Bot Ativo - Clique para desativar" : "Bot Desativado - Clique para ativar"}
+                  >
+                    {chat.botAtivo ? <Bot className="h-4 w-4" /> : <BotOff className="h-4 w-4" />}
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => fecharChat(chat.id)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+
+            <CardContent className="flex-1 overflow-y-auto bg-slate-50 p-4 space-y-3">
+              {chat.mensagens.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  <div className="text-center">
+                    <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">Nenhuma mensagem ainda</p>
+                  </div>
+                </div>
+              ) : (
+                chat.mensagens.map((msg) => {
+                  const isCliente = msg.tipo === "cliente"
+                  const isBot = msg.tipo === "bot"
+                  const isAtendente = msg.tipo === "atendente"
+
+                  return (
+                    <div key={msg.id} className={`flex ${isCliente ? "justify-start" : "justify-end"}`}>
+                      <div
+                        className={`max-w-[70%] rounded-lg p-3 ${
+                          isCliente
+                            ? "bg-white border border-slate-200"
+                            : isBot
+                              ? "bg-blue-100 border border-blue-200"
+                              : "bg-green-100 border border-green-200"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          {isBot && <Bot className="h-3 w-3 text-blue-600" />}
+                          {isAtendente && <User className="h-3 w-3 text-green-600" />}
+                          {isCliente && <User className="h-3 w-3 text-slate-600" />}
+                          <span className="text-xs font-semibold">
+                            {isCliente ? "Cliente" : isBot ? "Bot" : "Atendente"}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(msg.timestamp).toLocaleTimeString("pt-BR", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
+                        <p className="text-sm whitespace-pre-wrap">{msg.conteudo}</p>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+              <div ref={(el) => (chatEndRefs.current[chat.id] = el)} />
+            </CardContent>
+
+            <div className="p-4 border-t bg-white">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Digite sua mensagem..."
+                  value={chat.novaMensagem}
+                  onChange={(e) =>
+                    setChatWindows((prev) =>
+                      prev.map((c) => (c.id === chat.id ? { ...c, novaMensagem: e.target.value } : c)),
+                    )
+                  }
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault()
+                      enviarMensagem(chat.id)
+                    }
+                  }}
+                  disabled={chat.enviandoMensagem}
+                  className="flex-1"
+                />
+                <Button
+                  onClick={() => enviarMensagem(chat.id)}
+                  disabled={chat.enviandoMensagem || !chat.novaMensagem.trim()}
+                  size="icon"
+                >
+                  {chat.enviandoMensagem ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
     </div>
   )
 }

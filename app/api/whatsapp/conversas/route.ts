@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient()
     const { searchParams } = new URL(request.url)
     const status = searchParams.get("status")
+    const telefone = searchParams.get("telefone")
 
     let query = supabase
       .from("whatsapp_conversas")
@@ -25,6 +26,10 @@ export async function GET(request: NextRequest) {
       query = query.eq("status", status)
     }
 
+    if (telefone) {
+      query = query.eq("cliente_telefone", telefone)
+    }
+
     const { data, error } = await query
 
     if (error) {
@@ -32,7 +37,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Erro ao buscar conversas" }, { status: 500 })
     }
 
-    // Formatar dados para o frontend
     const conversas =
       data?.map((conversa) => ({
         id: conversa.id,
@@ -65,7 +69,6 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient()
     const { cliente_nome, cliente_telefone, mensagem } = await request.json()
 
-    // Verificar se já existe conversa ativa para este telefone
     const { data: conversaExistente } = await supabase
       .from("whatsapp_conversas")
       .select("id")
@@ -76,7 +79,6 @@ export async function POST(request: NextRequest) {
     let conversaId = conversaExistente?.id
 
     if (!conversaId) {
-      // Criar nova conversa
       const { data: novaConversa, error } = await supabase
         .from("whatsapp_conversas")
         .insert({
@@ -96,7 +98,6 @@ export async function POST(request: NextRequest) {
       conversaId = novaConversa.id
     }
 
-    // Adicionar mensagem
     const { error: msgError } = await supabase.from("whatsapp_mensagens").insert({
       conversa_id: conversaId,
       tipo: "cliente",

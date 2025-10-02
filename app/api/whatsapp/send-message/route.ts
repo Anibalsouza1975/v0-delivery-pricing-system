@@ -78,6 +78,7 @@ export async function POST(request: NextRequest) {
         conversa_id: conversa.id,
         tipo: tipo,
         conteudo: message,
+        status: "enviada",
       })
 
       // Atualizar última mensagem da conversa

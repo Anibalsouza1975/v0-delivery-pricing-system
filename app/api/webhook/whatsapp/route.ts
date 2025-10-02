@@ -166,6 +166,23 @@ export async function POST(request: NextRequest) {
             console.log(`[v0] [${requestId}] 🤖 Iniciando processamento com IA...`)
 
             try {
+              console.log(`[v0] [${requestId}] 🔍 Verificando status do bot para ${from}...`)
+              const { data: botControl } = await supabase
+                .from("bot_control")
+                .select("bot_ativo")
+                .eq("telefone", from)
+                .single()
+
+              const botAtivo = botControl?.bot_ativo !== false // Default: bot ativo se não houver registro
+              console.log(`[v0] [${requestId}] Bot ativo para ${from}:`, botAtivo)
+
+              if (!botAtivo) {
+                console.log(`[v0] [${requestId}] ⏸️ Bot desativado para este número, salvando mensagem sem responder`)
+                await salvarConversaNoBanco(from, text, messageId)
+                console.log(`[v0] [${requestId}] ✅ Mensagem salva, aguardando atendimento manual`)
+                continue
+              }
+
               console.log(`[v0] [${requestId}] 💾 Salvando mensagem do cliente no banco...`)
               await salvarConversaNoBanco(from, text, messageId)
               console.log(`[v0] [${requestId}] ✅ Mensagem do cliente salva`)
