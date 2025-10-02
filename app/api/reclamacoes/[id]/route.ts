@@ -61,15 +61,40 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: "Erro ao buscar reclamação" }, { status: 500 })
     }
 
+    if (status === "resolvido") {
+      // Send notification before deleting
+      if (resposta && complaintBefore.cliente_telefone) {
+        const mensagemNotificacao =
+          `✅ Sua reclamação ${complaintBefore.numero_ticket} foi resolvida!\n\n` +
+          `💬 Resposta da equipe:\n${resposta}\n\n` +
+          `Agradecemos pelo seu feedback e esperamos ter resolvido sua situação. Se precisar de mais ajuda, estamos à disposição! 🙏`
+
+        // Send notification asynchronously
+        enviarNotificacaoWhatsApp(complaintBefore.cliente_telefone, mensagemNotificacao).catch((err) => {
+          console.error("[v0] Erro ao enviar notificação (async):", err)
+        })
+      }
+
+      // Delete the complaint from database
+      const { error: deleteError } = await supabase.from("reclamacoes").delete().eq("id", params.id)
+
+      if (deleteError) {
+        console.error("Erro ao excluir reclamação:", deleteError)
+        return NextResponse.json({ error: "Erro ao excluir reclamação" }, { status: 500 })
+      }
+
+      return NextResponse.json({
+        message: "Reclamação resolvida e excluída com sucesso",
+        deleted: true,
+      })
+    }
+
     const updateData: any = {
       updated_at: new Date().toISOString(),
     }
 
     if (status) {
       updateData.status = status
-      if (status === "resolvido" || status === "fechado") {
-        updateData.data_resolucao = new Date().toISOString()
-      }
     }
 
     if (resposta !== undefined) {
@@ -84,15 +109,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     if (resposta && complaintBefore.cliente_telefone) {
-      const statusEmoji = status === "resolvido" ? "✅" : status === "em_andamento" ? "⏳" : "🔴"
-      const statusTexto =
-        status === "resolvido"
-          ? "Resolvido"
-          : status === "em_andamento"
-            ? "Em andamento"
-            : status === "aberto"
-              ? "Aberto"
-              : "Atualizado"
+      const statusEmoji = status === "em_andamento" ? "⏳" : "🔴"
+      const statusTexto = status === "em_andamento" ? "Em andamento" : status === "aberto" ? "Aberto" : "Atualizado"
 
       const mensagemNotificacao =
         `📢 Atualização da sua reclamação ${data.numero_ticket}\n\n` +

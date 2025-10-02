@@ -169,6 +169,8 @@ export async function createComplaintTicket(
 // Obter reclamações do cliente
 export async function getCustomerComplaints(telefone: string): Promise<any[]> {
   try {
+    console.log("[v0] Buscando reclamações para telefone:", telefone)
+
     const { data: complaints, error } = await supabase
       .from("reclamacoes")
       .select("*")
@@ -181,6 +183,7 @@ export async function getCustomerComplaints(telefone: string): Promise<any[]> {
       return []
     }
 
+    console.log("[v0] Reclamações encontradas:", complaints?.length || 0)
     return complaints || []
   } catch (error) {
     console.error("[v0] Erro ao buscar reclamações:", error)
@@ -203,6 +206,12 @@ export async function formatComplaintStatus(telefone: string): Promise<string> {
 
     response += `${statusEmoji} Ticket: ${complaint.numero_ticket}\n`
     response += `📂 Categoria: ${complaint.categoria}\n`
+
+    if (complaint.descricao) {
+      const shortDescription =
+        complaint.descricao.length > 80 ? complaint.descricao.substring(0, 80) + "..." : complaint.descricao
+      response += `📝 Descrição: ${shortDescription}\n`
+    }
 
     if (complaint.numero_pedido) {
       response += `📦 Pedido: ${complaint.numero_pedido}\n`
