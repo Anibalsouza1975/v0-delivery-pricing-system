@@ -253,12 +253,18 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
       const { response, shouldContinue } = await processComplaintMessage(mensagem, telefone, clienteNome)
 
       if (!shouldContinue) {
+        console.log("[v0] 💾 Salvando resposta de reclamação no banco...")
+        await salvarRespostaNoBanco(telefone, response)
+        console.log("[v0] ✅ Resposta de reclamação salva")
         // Return complaint flow response directly
         return response
       }
 
       // If shouldContinue is true, the complaint flow is complete, continue with normal AI
       if (response) {
+        console.log("[v0] 💾 Salvando resposta de conclusão no banco...")
+        await salvarRespostaNoBanco(telefone, response)
+        console.log("[v0] ✅ Resposta de conclusão salva")
         // Send the completion message and continue
         setTimeout(async () => {
           await enviarMensagemWhatsApp(telefone, response)
@@ -282,6 +288,9 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
       const { response } = await processComplaintMessage(mensagem, telefone, clienteNome)
 
       if (response) {
+        console.log("[v0] 💾 Salvando resposta de detecção de reclamação no banco...")
+        await salvarRespostaNoBanco(telefone, response)
+        console.log("[v0] ✅ Resposta de detecção de reclamação salva")
         return response
       }
     }
