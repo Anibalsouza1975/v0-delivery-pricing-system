@@ -160,29 +160,15 @@ export async function POST(request: NextRequest) {
           }
 
           mensagensProcessadas.add(messageId)
+          console.log(`[v0] [${requestId}] ✅ Mensagem marcada como processada`)
 
           if (text && message.type === "text") {
-            console.log(`[v0] [${requestId}] 🤖 Iniciando processamento...`)
+            console.log(`[v0] [${requestId}] 🤖 Iniciando processamento com IA...`)
 
             try {
-              const { data: botControl } = await supabase
-                .from("bot_control")
-                .select("bot_ativo")
-                .eq("telefone", from)
-                .single()
-
-              const botAtivo = botControl?.bot_ativo ?? true
-
-              console.log(`[v0] [${requestId}] Bot ativo para ${from}:`, botAtivo)
-
               console.log(`[v0] [${requestId}] 💾 Salvando mensagem do cliente no banco...`)
               await salvarConversaNoBanco(from, text, messageId)
               console.log(`[v0] [${requestId}] ✅ Mensagem do cliente salva`)
-
-              if (!botAtivo) {
-                console.log(`[v0] [${requestId}] ⏸️ Bot desativado para este número - modo manual ativo`)
-                continue
-              }
 
               console.log(`[v0] [${requestId}] 🧠 Gerando resposta com Groq AI...`)
               const resposta = await processarMensagemComIA(text, from)
@@ -204,7 +190,10 @@ export async function POST(request: NextRequest) {
               }
             } catch (error) {
               console.error(`[v0] [${requestId}] ❌ Erro ao processar mensagem:`, error)
+              console.error(`[v0] [${requestId}] Stack:`, error instanceof Error ? error.stack : "No stack")
             }
+          } else {
+            console.log(`[v0] [${requestId}] ⏭️ Mensagem não é de texto, tipo:`, message.type)
           }
         }
       } else {
@@ -253,18 +242,12 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
       const { response, shouldContinue } = await processComplaintMessage(mensagem, telefone, clienteNome)
 
       if (!shouldContinue) {
-        console.log("[v0] 💾 Salvando resposta de reclamação no banco...")
-        await salvarRespostaNoBanco(telefone, response)
-        console.log("[v0] ✅ Resposta de reclamação salva")
         // Return complaint flow response directly
         return response
       }
 
       // If shouldContinue is true, the complaint flow is complete, continue with normal AI
       if (response) {
-        console.log("[v0] 💾 Salvando resposta de conclusão no banco...")
-        await salvarRespostaNoBanco(telefone, response)
-        console.log("[v0] ✅ Resposta de conclusão salva")
         // Send the completion message and continue
         setTimeout(async () => {
           await enviarMensagemWhatsApp(telefone, response)
@@ -288,9 +271,6 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
       const { response } = await processComplaintMessage(mensagem, telefone, clienteNome)
 
       if (response) {
-        console.log("[v0] 💾 Salvando resposta de detecção de reclamação no banco...")
-        await salvarRespostaNoBanco(telefone, response)
-        console.log("[v0] ✅ Resposta de detecção de reclamação salva")
         return response
       }
     }

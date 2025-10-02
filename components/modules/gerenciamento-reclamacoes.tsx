@@ -6,7 +6,16 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   AlertCircle,
   CheckCircle,
@@ -19,9 +28,7 @@ import {
   User,
   XCircle,
   RefreshCw,
-  MessageCircle,
 } from "lucide-react"
-import { ChatManualAdmin } from "@/components/chat-manual-admin"
 
 interface Reclamacao {
   id: string
@@ -62,7 +69,6 @@ export default function GerenciamentoReclamacoesModule() {
   const [busca, setBusca] = useState("")
   const [resposta, setResposta] = useState("")
   const [novoStatus, setNovoStatus] = useState<string>("")
-  const [chatAberto, setChatAberto] = useState<{ telefone: string; ticket: string } | null>(null)
 
   const carregarReclamacoes = async () => {
     setIsLoading(true)
@@ -332,30 +338,13 @@ export default function GerenciamentoReclamacoesModule() {
                       </div>
                     </div>
 
-                    <div className="flex flex-col items-end gap-2">
-                      <div className="text-right text-xs text-muted-foreground">
-                        {new Date(reclamacao.data_criacao).toLocaleDateString("pt-BR")}
-                        <br />
-                        {new Date(reclamacao.data_criacao).toLocaleTimeString("pt-BR", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="gap-2 bg-transparent"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setChatAberto({
-                            telefone: reclamacao.cliente_telefone,
-                            ticket: reclamacao.numero_ticket,
-                          })
-                        }}
-                      >
-                        <MessageCircle className="h-4 w-4" />
-                        Abrir Chat
-                      </Button>
+                    <div className="text-right text-xs text-muted-foreground">
+                      {new Date(reclamacao.data_criacao).toLocaleDateString("pt-BR")}
+                      <br />
+                      {new Date(reclamacao.data_criacao).toLocaleTimeString("pt-BR", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </div>
                   </div>
                 </CardContent>
@@ -365,13 +354,94 @@ export default function GerenciamentoReclamacoesModule() {
         )}
       </div>
 
-      {chatAberto && (
-        <ChatManualAdmin
-          telefone={chatAberto.telefone}
-          numeroTicket={chatAberto.ticket}
-          onClose={() => setChatAberto(null)}
-        />
-      )}
+      <Dialog open={!!reclamacaoSelecionada} onOpenChange={() => setReclamacaoSelecionada(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              Ticket #{reclamacaoSelecionada?.numero_ticket}
+              <Badge className={statusConfig[reclamacaoSelecionada?.status || "aberto"].color}>
+                {statusConfig[reclamacaoSelecionada?.status || "aberto"].label}
+              </Badge>
+            </DialogTitle>
+            <DialogDescription>Detalhes e resposta da reclamação</DialogDescription>
+          </DialogHeader>
+
+          {reclamacaoSelecionada && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Cliente</Label>
+                  <p className="font-medium">{reclamacaoSelecionada.cliente_nome}</p>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Telefone</Label>
+                  <p className="font-medium">{reclamacaoSelecionada.cliente_telefone}</p>
+                </div>
+                {reclamacaoSelecionada.numero_pedido && (
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Número do Pedido</Label>
+                    <p className="font-medium">#{reclamacaoSelecionada.numero_pedido}</p>
+                  </div>
+                )}
+                <div>
+                  <Label className="text-xs text-muted-foreground">Categoria</Label>
+                  <p className="font-medium">
+                    {categorias.find((c) => c.value === reclamacaoSelecionada.categoria)?.label}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-xs text-muted-foreground">Descrição do Problema</Label>
+                <div className="bg-slate-50 border rounded-lg p-3 mt-1">
+                  <p className="text-sm">{reclamacaoSelecionada.descricao}</p>
+                </div>
+              </div>
+
+              <div>
+                <Label>Status</Label>
+                <Select value={novoStatus} onValueChange={setNovoStatus}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="aberto">Aberto</SelectItem>
+                    <SelectItem value="em_andamento">Em Andamento</SelectItem>
+                    <SelectItem value="resolvido">Resolvido</SelectItem>
+                    <SelectItem value="fechado">Fechado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label>Resposta</Label>
+                <Textarea
+                  placeholder="Digite sua resposta ao cliente..."
+                  value={resposta}
+                  onChange={(e) => setResposta(e.target.value)}
+                  rows={4}
+                  className="mt-1"
+                />
+              </div>
+
+              <div className="text-xs text-muted-foreground">
+                <p>Criado em: {new Date(reclamacaoSelecionada.data_criacao).toLocaleString("pt-BR")}</p>
+                <p>Atualizado em: {new Date(reclamacaoSelecionada.data_atualizacao).toLocaleString("pt-BR")}</p>
+                {reclamacaoSelecionada.data_resolucao && (
+                  <p>Resolvido em: {new Date(reclamacaoSelecionada.data_resolucao).toLocaleString("pt-BR")}</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReclamacaoSelecionada(null)}>
+              Cancelar
+            </Button>
+            <Button onClick={atualizarReclamacao}>Salvar Alterações</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
