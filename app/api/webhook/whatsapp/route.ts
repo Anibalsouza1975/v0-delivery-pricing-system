@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js"
 import { createClient as createServerClient } from "@/lib/supabase/server"
 import { put } from "@vercel/blob"
 import { Buffer } from "buffer"
+import { detectComplaint, processComplaintMessage, getComplaintState } from "@/lib/whatsapp-complaints-handler"
 
 const mensagensProcessadas = new Set<string>()
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
@@ -224,6 +225,56 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
   try {
     console.log("[v0] Iniciando processamento IA para:", mensagem)
 
+    const complaintState = await getComplaintState(telefone)
+
+    if (complaintState) {
+      console.log("[v0] Cliente está em fluxo de reclamação, processando...")
+
+      // Get client name
+      const { data: conversa } = await supabase
+        .from("whatsapp_conversas")
+        .select("cliente_nome")
+        .eq("cliente_telefone", telefone)
+        .single()
+
+      const clienteNome = conversa?.cliente_nome || telefone
+
+      const { response, shouldContinue } = await processComplaintMessage(mensagem, telefone, clienteNome)
+
+      if (!shouldContinue) {
+        // Return complaint flow response directly
+        return response
+      }
+
+      // If shouldContinue is true, the complaint flow is complete, continue with normal AI
+      if (response) {
+        // Send the completion message and continue
+        setTimeout(async () => {
+          await enviarMensagemWhatsApp(telefone, response)
+        }, 500)
+      }
+    }
+
+    const isComplaintDetected = detectComplaint(mensagem)
+
+    if (isComplaintDetected && !complaintState) {
+      console.log("[v0] Palavras de reclamação detectadas, oferecendo ajuda...")
+
+      const { data: conversa } = await supabase
+        .from("whatsapp_conversas")
+        .select("cliente_nome")
+        .eq("cliente_telefone", telefone)
+        .single()
+
+      const clienteNome = conversa?.cliente_nome || telefone
+
+      const { response } = await processComplaintMessage(mensagem, telefone, clienteNome)
+
+      if (response) {
+        return response
+      }
+    }
+
     const { data: mensagensAnteriores } = await supabase
       .from("whatsapp_mensagens")
       .select("id")
@@ -334,6 +385,17 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
     `
       : ""
 
+    const suporteInstrucoes = `
+    SUPORTE E AJUDA:
+    - Se o cliente mencionar problemas, reclamações ou insatisfação, o sistema detectará automaticamente
+    - Você NÃO precisa oferecer registrar reclamação, o sistema fará isso automaticamente
+    - Seja empático e compreensivo com problemas do cliente
+    - Se o cliente perguntar sobre suporte ou ajuda, mencione que pode ajudar com:
+      * Informações sobre pedidos
+      * Dúvidas sobre o cardápio
+      * Problemas ou reclamações (que serão registrados formalmente)
+    `
+
     const contextoNegocio = `
     Você é o assistente virtual do Cartago Burger Grill, um restaurante especializado em hambúrgueres artesanais.
 
@@ -349,6 +411,8 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
     ${primeiraInteracaoInstrucoes}
 
     ${menuLinkInstrucoes}
+
+    ${suporteInstrucoes}
 
     ${cardapioTexto}
 
@@ -414,7 +478,7 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
           "Ver Cardápio 🍔",
           menuUrl,
         )
-      }, 1000) // Wait 1 second after main message
+      }, 1000)
     }
 
     await enviarImagemSeProdutoMencionado(text, produtosComImagem, telefone, mensagem)
