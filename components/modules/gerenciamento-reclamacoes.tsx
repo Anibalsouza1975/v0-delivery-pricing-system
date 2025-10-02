@@ -28,7 +28,9 @@ import {
   User,
   XCircle,
   RefreshCw,
+  MessageCircle,
 } from "lucide-react"
+import ChatManualAdmin from "@/components/chat-manual-admin"
 
 interface Reclamacao {
   id: string
@@ -69,6 +71,8 @@ export default function GerenciamentoReclamacoesModule() {
   const [busca, setBusca] = useState("")
   const [resposta, setResposta] = useState("")
   const [novoStatus, setNovoStatus] = useState<string>("")
+  const [chatAberto, setChatAberto] = useState(false)
+  const [clienteChat, setClienteChat] = useState<{ telefone: string; nome: string } | null>(null)
 
   const carregarReclamacoes = async () => {
     setIsLoading(true)
@@ -115,6 +119,11 @@ export default function GerenciamentoReclamacoesModule() {
       console.error("Erro ao atualizar:", error)
       alert("Erro ao atualizar reclamação. Tente novamente.")
     }
+  }
+
+  const abrirChat = (telefone: string, nome: string) => {
+    setClienteChat({ telefone, nome })
+    setChatAberto(true)
   }
 
   useEffect(() => {
@@ -338,13 +347,26 @@ export default function GerenciamentoReclamacoesModule() {
                       </div>
                     </div>
 
-                    <div className="text-right text-xs text-muted-foreground">
-                      {new Date(reclamacao.data_criacao).toLocaleDateString("pt-BR")}
-                      <br />
-                      {new Date(reclamacao.data_criacao).toLocaleTimeString("pt-BR", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                    <div className="flex flex-col items-end gap-2">
+                      <div className="text-right text-xs text-muted-foreground">
+                        {new Date(reclamacao.data_criacao).toLocaleDateString("pt-BR")}
+                        <br />
+                        {new Date(reclamacao.data_criacao).toLocaleTimeString("pt-BR", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          abrirChat(reclamacao.cliente_telefone, reclamacao.cliente_nome)
+                        }}
+                      >
+                        <MessageCircle className="h-4 w-4 mr-2" />
+                        Abrir Chat
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
@@ -442,6 +464,18 @@ export default function GerenciamentoReclamacoesModule() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {clienteChat && (
+        <ChatManualAdmin
+          telefone={clienteChat.telefone}
+          clienteNome={clienteChat.nome}
+          isOpen={chatAberto}
+          onClose={() => {
+            setChatAberto(false)
+            setClienteChat(null)
+          }}
+        />
+      )}
     </div>
   )
 }

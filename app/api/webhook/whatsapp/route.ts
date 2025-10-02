@@ -90,7 +90,6 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  // Log IMMEDIATELY when POST is called
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(7)}`
   console.log(`[v0] 🔔 ===== WEBHOOK POST CHAMADO ===== [${requestId}]`, new Date().toISOString())
   console.log(`[v0] 🚀 ===== WEBHOOK POST INICIADO [${requestId}] =====`)
@@ -163,34 +162,45 @@ export async function POST(request: NextRequest) {
           console.log(`[v0] [${requestId}] ✅ Mensagem marcada como processada`)
 
           if (text && message.type === "text") {
-            console.log(`[v0] [${requestId}] 🤖 Iniciando processamento com IA...`)
+            console.log(`[v0] [${requestId}] 💾 Salvando mensagem no histórico...`)
+            await salvarMensagemHistorico(from, text, "recebida", "cliente")
+            console.log(`[v0] [${requestId}] ✅ Mensagem salva no histórico`)
 
-            try {
-              console.log(`[v0] [${requestId}] 💾 Salvando mensagem do cliente no banco...`)
-              await salvarConversaNoBanco(from, text, messageId)
-              console.log(`[v0] [${requestId}] ✅ Mensagem do cliente salva`)
+            const botStatus = await verificarStatusBot(from)
+            console.log(
+              `[v0] [${requestId}] 🤖 Status do bot para ${from}:`,
+              botStatus?.bot_ativo ? "ATIVO" : "DESATIVADO",
+            )
 
-              console.log(`[v0] [${requestId}] 🧠 Gerando resposta com Groq AI...`)
-              const resposta = await processarMensagemComIA(text, from)
-              console.log(`[v0] [${requestId}] ✅ Resposta da IA gerada:`, resposta.substring(0, 100) + "...")
+            if (!botStatus?.bot_ativo) {
+              console.log(`[v0] [${requestId}] 🚫 Bot desativado para este número. Admin está no controle.`)
+              console.log(`[v0] [${requestId}] Mensagem salva, mas não será processada pelo bot.`)
+              continue // Skip bot processing
+            }
 
-              console.log(`[v0] [${requestId}] 💾 Salvando resposta da IA no banco...`)
-              await salvarRespostaNoBanco(from, resposta)
-              console.log(`[v0] [${requestId}] ✅ Resposta da IA salva no banco`)
+            console.log(`[v0] [${requestId}] 💾 Salvando mensagem do cliente no banco...`)
+            await salvarConversaNoBanco(from, text, messageId)
+            console.log(`[v0] [${requestId}] ✅ Mensagem do cliente salva`)
 
-              console.log(`[v0] [${requestId}] 📤 Tentando enviar via WhatsApp...`)
-              const enviado = await enviarMensagemWhatsApp(from, resposta)
+            console.log(`[v0] [${requestId}] 🧠 Gerando resposta com Groq AI...`)
+            const resposta = await processarMensagemComIA(text, from)
+            console.log(`[v0] [${requestId}] ✅ Resposta da IA gerada:`, resposta.substring(0, 100) + "...")
 
-              if (enviado) {
-                console.log(`[v0] [${requestId}] ✅ Mensagem enviada com sucesso via WhatsApp`)
-                await atualizarStatusMensagem(from, resposta, "enviada")
-              } else {
-                console.log(`[v0] [${requestId}] ⚠️ Falha ao enviar via WhatsApp (mas resposta está no banco)`)
-                await atualizarStatusMensagem(from, resposta, "pendente")
-              }
-            } catch (error) {
-              console.error(`[v0] [${requestId}] ❌ Erro ao processar mensagem:`, error)
-              console.error(`[v0] [${requestId}] Stack:`, error instanceof Error ? error.stack : "No stack")
+            console.log(`[v0] [${requestId}] 💾 Salvando resposta da IA no banco...`)
+            await salvarRespostaNoBanco(from, resposta)
+            console.log(`[v0] [${requestId}] ✅ Resposta da IA salva no banco`)
+
+            await salvarMensagemHistorico(from, resposta, "enviada", "bot")
+
+            console.log(`[v0] [${requestId}] 📤 Tentando enviar via WhatsApp...`)
+            const enviado = await enviarMensagemWhatsApp(from, resposta)
+
+            if (enviado) {
+              console.log(`[v0] [${requestId}] ✅ Mensagem enviada com sucesso via WhatsApp`)
+              await atualizarStatusMensagem(from, resposta, "enviada")
+            } else {
+              console.log(`[v0] [${requestId}] ⚠️ Falha ao enviar via WhatsApp (mas resposta está no banco)`)
+              await atualizarStatusMensagem(from, resposta, "pendente")
             }
           } else {
             console.log(`[v0] [${requestId}] ⏭️ Mensagem não é de texto, tipo:`, message.type)
@@ -1149,4 +1159,48 @@ function getStatusMensagem(status: string): string {
     cancelado: "Seu pedido foi cancelado. Entre em contato conosco para mais informações.",
   }
   return mensagens[status] || "Entre em contato conosco para mais informações."
+}
+
+async function verificarStatusBot(telefone: string): Promise<{ bot_ativo: boolean } | null> {
+  try {
+    const { data, error } = await supabase.from("bot_control").select("bot_ativo").eq("telefone", telefone).single()
+
+    if (error && error.code !== "PGRST116") {
+      console.error("[v0] Erro ao verificar status do bot:", error)
+      return { bot_ativo: true } // Default to active if error
+    }
+
+    // If no record exists, bot is active by default
+    if (!data) {
+      return { bot_ativo: true }
+    }
+
+    return data
+  } catch (error) {
+    console.error("[v0] Erro ao verificar status do bot:", error)
+    return { bot_ativo: true } // Default to active if error
+  }
+}
+
+async function salvarMensagemHistorico(
+  telefone: string,
+  mensagem: string,
+  tipo: "recebida" | "enviada",
+  remetente: "cliente" | "bot" | "admin",
+) {
+  try {
+    const { error } = await supabase.from("whatsapp_messages").insert({
+      telefone,
+      mensagem,
+      tipo,
+      remetente,
+      status: tipo === "enviada" ? "enviada" : "entregue",
+    })
+
+    if (error) {
+      console.error("[v0] Erro ao salvar mensagem no histórico:", error)
+    }
+  } catch (error) {
+    console.error("[v0] Erro ao salvar mensagem no histórico:", error)
+  }
 }
