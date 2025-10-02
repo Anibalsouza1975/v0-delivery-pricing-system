@@ -33,6 +33,21 @@ const COMPLAINT_KEYWORDS = [
   "estragado",
 ]
 
+// Palavras-chave que indicam consulta de status de reclamação
+const STATUS_INQUIRY_KEYWORDS = [
+  "como está",
+  "como esta",
+  "status",
+  "andamento",
+  "minha reclamação",
+  "minha reclamacao",
+  "meu ticket",
+  "acompanhar",
+  "ver reclamação",
+  "ver reclamacao",
+  "consultar",
+]
+
 // Categorias de reclamação
 export const COMPLAINT_CATEGORIES = {
   PEDIDO: "Problema com o pedido",
@@ -54,6 +69,12 @@ export type ComplaintState = {
 export function detectComplaint(message: string): boolean {
   const messageLower = message.toLowerCase()
   return COMPLAINT_KEYWORDS.some((keyword) => messageLower.includes(keyword))
+}
+
+// Detectar se a mensagem contém palavras de consulta de status de reclamação
+export function detectStatusInquiry(message: string): boolean {
+  const messageLower = message.toLowerCase()
+  return STATUS_INQUIRY_KEYWORDS.some((keyword) => messageLower.includes(keyword))
 }
 
 // Obter estado da reclamação do cliente
@@ -144,6 +165,63 @@ export async function createComplaintTicket(
   }
 }
 
+// Obter reclamações do cliente
+export async function getCustomerComplaints(telefone: string): Promise<any[]> {
+  try {
+    const { data: complaints, error } = await supabase
+      .from("reclamacoes")
+      .select("*")
+      .eq("cliente_telefone", telefone)
+      .order("created_at", { ascending: false })
+      .limit(5)
+
+    if (error) {
+      console.error("[v0] Erro ao buscar reclamações:", error)
+      return []
+    }
+
+    return complaints || []
+  } catch (error) {
+    console.error("[v0] Erro ao buscar reclamações:", error)
+    return []
+  }
+}
+
+// Formatar resposta de status de reclamação
+export async function formatComplaintStatus(telefone: string): Promise<string> {
+  const complaints = await getCustomerComplaints(telefone)
+
+  if (complaints.length === 0) {
+    return "Você ainda não possui reclamações registradas. Se tiver algum problema, posso ajudar a registrar uma reclamação."
+  }
+
+  let response = "📋 Suas reclamações:\n\n"
+
+  for (const complaint of complaints) {
+    const statusEmoji = complaint.status === "resolvido" ? "✅" : complaint.status === "em_andamento" ? "⏳" : "🔴"
+
+    response += `${statusEmoji} Ticket: ${complaint.numero_ticket}\n`
+    response += `📂 Categoria: ${complaint.categoria}\n`
+
+    if (complaint.numero_pedido) {
+      response += `📦 Pedido: ${complaint.numero_pedido}\n`
+    }
+
+    response += `📅 Data: ${new Date(complaint.created_at).toLocaleDateString("pt-BR")}\n`
+    response += `Status: ${complaint.status.charAt(0).toUpperCase() + complaint.status.slice(1).replace("_", " ")}\n`
+
+    if (complaint.resposta) {
+      response += `💬 Resposta: ${complaint.resposta}\n`
+    }
+
+    response += "\n"
+  }
+
+  response += "Para mais detalhes sobre uma reclamação específica, informe o número do ticket."
+
+  return response
+}
+
 // Processar mensagem no contexto de reclamação
 export async function processComplaintMessage(
   message: string,
@@ -151,6 +229,14 @@ export async function processComplaintMessage(
   clienteNome: string,
 ): Promise<{ response: string; shouldContinue: boolean }> {
   const currentState = await getComplaintState(telefone)
+
+  if (!currentState && detectStatusInquiry(message)) {
+    const statusResponse = await formatComplaintStatus(telefone)
+    return {
+      response: statusResponse,
+      shouldContinue: true,
+    }
+  }
 
   // Se não há estado, detectar se é uma reclamação
   if (!currentState) {
