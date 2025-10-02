@@ -55,6 +55,7 @@ export const COMPLAINT_CATEGORIES = {
   QUALIDADE: "Qualidade do produto",
   PAGAMENTO: "Problema com pagamento",
   OUTRO: "Outro assunto",
+  CONSULTAR: "Consultar Reclamação",
 }
 
 // Estados da conversa de reclamação
@@ -222,6 +223,58 @@ export async function formatComplaintStatus(telefone: string): Promise<string> {
   return response
 }
 
+// Obter reclamação por número de ticket
+export async function getComplaintByTicket(ticketNumber: string): Promise<any | null> {
+  try {
+    const { data: complaint, error } = await supabase
+      .from("reclamacoes")
+      .select("*")
+      .eq("numero_ticket", ticketNumber.toUpperCase())
+      .single()
+
+    if (error) {
+      console.error("[v0] Erro ao buscar reclamação por ticket:", error)
+      return null
+    }
+
+    return complaint
+  } catch (error) {
+    console.error("[v0] Erro ao buscar reclamação:", error)
+    return null
+  }
+}
+
+// Formatar detalhes de uma reclamação
+export function formatComplaintDetails(complaint: any): string {
+  const statusEmoji = complaint.status === "resolvido" ? "✅" : complaint.status === "em_andamento" ? "⏳" : "🔴"
+  const statusText = complaint.status.charAt(0).toUpperCase() + complaint.status.slice(1).replace("_", " ")
+
+  let response = `📋 Detalhes da Reclamação\n\n`
+  response += `${statusEmoji} Ticket: ${complaint.numero_ticket}\n`
+  response += `📂 Categoria: ${complaint.categoria}\n`
+
+  if (complaint.numero_pedido) {
+    response += `📦 Pedido: ${complaint.numero_pedido}\n`
+  }
+
+  response += `👤 Cliente: ${complaint.cliente_nome}\n`
+  response += `📅 Data: ${new Date(complaint.created_at).toLocaleDateString("pt-BR")} às ${new Date(complaint.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}\n`
+  response += `📊 Status: ${statusText}\n\n`
+  response += `📝 Descrição:\n${complaint.descricao}\n`
+
+  if (complaint.resposta) {
+    response += `\n💬 Resposta da Equipe:\n${complaint.resposta}\n`
+  } else {
+    response += `\n⏳ Aguardando resposta da equipe...\n`
+  }
+
+  if (complaint.updated_at && complaint.updated_at !== complaint.created_at) {
+    response += `\n🔄 Última atualização: ${new Date(complaint.updated_at).toLocaleDateString("pt-BR")} às ${new Date(complaint.updated_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`
+  }
+
+  return response
+}
+
 // Processar mensagem no contexto de reclamação
 export async function processComplaintMessage(
   message: string,
@@ -229,6 +282,22 @@ export async function processComplaintMessage(
   clienteNome: string,
 ): Promise<{ response: string; shouldContinue: boolean }> {
   const currentState = await getComplaintState(telefone)
+
+  const ticketPattern = /^REC\d{3,}$/i
+  if (ticketPattern.test(message.trim().toUpperCase())) {
+    const complaint = await getComplaintByTicket(message.trim())
+    if (complaint) {
+      return {
+        response: formatComplaintDetails(complaint),
+        shouldContinue: true,
+      }
+    } else {
+      return {
+        response: `Não encontrei nenhuma reclamação com o código ${message.trim().toUpperCase()}. Verifique se digitou corretamente.`,
+        shouldContinue: true,
+      }
+    }
+  }
 
   if (!currentState && detectStatusInquiry(message)) {
     const statusResponse = await formatComplaintStatus(telefone)
@@ -272,7 +341,8 @@ export async function processComplaintMessage(
             "2️⃣ Problema com a entrega (atrasada, não chegou, etc.)\n" +
             "3️⃣ Qualidade do produto (frio, mal feito, etc.)\n" +
             "4️⃣ Problema com pagamento\n" +
-            "5️⃣ Outro assunto\n\n" +
+            "5️⃣ Outro assunto\n" +
+            "6️⃣ Consultar Reclamação\n\n" +
             "Digite o número da categoria:",
           shouldContinue: false,
         }
@@ -293,9 +363,19 @@ export async function processComplaintMessage(
         "3": COMPLAINT_CATEGORIES.QUALIDADE,
         "4": COMPLAINT_CATEGORIES.PAGAMENTO,
         "5": COMPLAINT_CATEGORIES.OUTRO,
+        "6": COMPLAINT_CATEGORIES.CONSULTAR,
       }
 
       const selectedCategory = categoryMap[message.trim()]
+
+      if (message.trim() === "6") {
+        await saveComplaintState(telefone, null)
+        const statusResponse = await formatComplaintStatus(telefone)
+        return {
+          response: statusResponse,
+          shouldContinue: true,
+        }
+      }
 
       if (selectedCategory) {
         await saveComplaintState(telefone, {
@@ -312,7 +392,7 @@ export async function processComplaintMessage(
         }
       } else {
         return {
-          response: "Por favor, digite um número de 1 a 5 para selecionar a categoria.",
+          response: "Por favor, digite um número de 1 a 6 para selecionar a categoria.",
           shouldContinue: false,
         }
       }
