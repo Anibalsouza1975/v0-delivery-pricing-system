@@ -24,6 +24,7 @@ import {
   Settings,
   BarChart3,
   Clock,
+  ArchiveRestore,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
@@ -410,6 +411,77 @@ export default function DiagnosticoBDModule() {
     )
   }
 
+  const excluirConversa = async (conversaId: string) => {
+    if (!confirm("Tem certeza que deseja excluir esta conversa do backup? Esta ação não pode ser desfeita.")) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/whatsapp/backup/conversas/${conversaId}`, {
+        method: "DELETE",
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast({
+          title: "Conversa excluída",
+          description: "A conversa foi removida do backup com sucesso",
+        })
+        await loadConversasBackup()
+      } else {
+        toast({
+          title: "Erro ao excluir",
+          description: data.error || "Erro desconhecido",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Erro ao excluir conversa:", error)
+      toast({
+        title: "Erro ao excluir",
+        description: "Não foi possível excluir a conversa",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const restaurarConversa = async (conversaId: string) => {
+    if (!confirm("Deseja restaurar esta conversa para as tabelas principais?")) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/whatsapp/backup/conversas/${conversaId}`, {
+        method: "POST",
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast({
+          title: "Conversa restaurada",
+          description: "A conversa foi movida de volta para as tabelas principais",
+        })
+        await loadConversasBackup()
+        await testConnection() // Atualizar contadores
+      } else {
+        toast({
+          title: "Erro ao restaurar",
+          description: data.error || "Erro desconhecido",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Erro ao restaurar conversa:", error)
+      toast({
+        title: "Erro ao restaurar",
+        description: "Não foi possível restaurar a conversa",
+        variant: "destructive",
+      })
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Status da Conexão */}
@@ -686,13 +758,13 @@ export default function DiagnosticoBDModule() {
                   <ScrollArea className="h-96">
                     <div className="space-y-2">
                       {conversasBackup.map((conversa) => (
-                        <Card key={conversa.id} className="cursor-pointer hover:bg-muted/50 transition-colors">
+                        <Card key={conversa.id} className="hover:bg-muted/50 transition-colors">
                           <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                              <div className="flex-1">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
-                                  <p className="font-medium">{conversa.cliente_nome}</p>
-                                  <Badge variant="outline" className="text-xs">
+                                  <p className="font-medium truncate">{conversa.cliente_nome}</p>
+                                  <Badge variant="outline" className="text-xs shrink-0">
                                     {conversa.status}
                                   </Badge>
                                 </div>
@@ -708,9 +780,33 @@ export default function DiagnosticoBDModule() {
                                   </span>
                                 </div>
                               </div>
-                              <Button size="sm" variant="outline" onClick={() => visualizarMensagens(conversa)}>
-                                Ver Mensagens
-                              </Button>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => visualizarMensagens(conversa)}
+                                  title="Ver mensagens"
+                                >
+                                  <MessageSquare className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => restaurarConversa(conversa.id)}
+                                  title="Restaurar conversa"
+                                >
+                                  <ArchiveRestore className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => excluirConversa(conversa.id)}
+                                  className="text-destructive hover:text-destructive"
+                                  title="Excluir conversa"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </div>
                           </CardContent>
                         </Card>

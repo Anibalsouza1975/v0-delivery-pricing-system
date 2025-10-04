@@ -6,18 +6,23 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { usePricing } from "@/components/pricing-context"
+import { usePricing } from "@/components/pricing-context-supabase"
 import { TrendingUp, AlertTriangle, DollarSign, BarChart3 } from "lucide-react"
 
 export default function RelacaoProdutos() {
   const { produtos, bebidas, combos, insumos, custosFixos, custosVariaveis, calculateCMV } = usePricing()
   const [selectedCategory, setSelectedCategory] = useState<"todos" | "produtos" | "bebidas" | "combos">("todos")
 
+  const toNumber = (value: any): number => {
+    const num = Number(value)
+    return isNaN(num) ? 0 : num
+  }
+
   // Calcular total de custos fixos mensais
-  const totalCustosFixos = custosFixos.reduce((total, custo) => total + custo.valor, 0)
+  const totalCustosFixos = custosFixos.reduce((total, custo) => total + toNumber(custo.valor), 0)
 
   // Calcular total de custos variáveis (percentual)
-  const totalCustosVariaveis = custosVariaveis.reduce((total, custo) => total + custo.percentual, 0)
+  const totalCustosVariaveis = custosVariaveis.reduce((total, custo) => total + toNumber(custo.percentual), 0)
 
   // Função para calcular rateio de custo fixo por produto (baseado no preço de venda)
   const calcularRateioCustoFixo = (precoVenda: number, totalVendasEstimadas: number) => {
@@ -37,31 +42,31 @@ export default function RelacaoProdutos() {
     let cmv = 0
 
     if (tipo === "produto") {
-      precoVenda = item.precoVenda || 0
-      cmv = calculateCMV(item.id)
+      precoVenda = toNumber(item.precoVenda)
+      cmv = toNumber(calculateCMV(item.id))
     } else if (tipo === "bebida") {
       // Para bebidas, calcular preço baseado no custo e markup
-      const custoUnitario = item.custoUnitario || 0
-      const markup = item.markup || 0
+      const custoUnitario = toNumber(item.custoUnitario || item.custo_unitario)
+      const markup = toNumber(item.markup)
       precoVenda = custoUnitario * (1 + markup / 100)
       cmv = custoUnitario
     } else if (tipo === "combo") {
       // Para combos, usar preço final após desconto
-      precoVenda = item.precoFinal || 0
-      cmv = item.precoOriginal || 0 // CMV do combo é o preço original dos itens
+      precoVenda = toNumber(item.precoFinal || item.preco_final)
+      cmv = toNumber(item.precoOriginal || item.preco_original || 0)
     }
 
     const custoVariavel = calcularCustoVariavel(precoVenda)
 
     // Estimativa simples de rateio (pode ser melhorada com dados reais de vendas)
     const totalEstimado = [
-      ...produtos.map((p) => p.precoVenda || 0),
+      ...produtos.map((p) => toNumber(p.precoVenda)),
       ...bebidas.map((b) => {
-        const custoUnitario = b.custoUnitario || 0
-        const markup = b.markup || 0
+        const custoUnitario = toNumber(b.custoUnitario || b.custo_unitario)
+        const markup = toNumber(b.markup)
         return custoUnitario * (1 + markup / 100)
       }),
-      ...combos.map((c) => c.precoFinal || 0),
+      ...combos.map((c) => toNumber(c.precoFinal || c.preco_final)),
     ].reduce((sum, p) => sum + p, 0)
 
     const custoFixoRateado = calcularRateioCustoFixo(precoVenda, totalEstimado)

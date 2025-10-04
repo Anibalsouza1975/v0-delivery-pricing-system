@@ -5,7 +5,7 @@ import { createClient } from "@supabase/supabase-js"
 import { createClient as createServerClient } from "@/lib/supabase/server"
 import { put } from "@vercel/blob"
 import { Buffer } from "buffer"
-import { detectComplaint, processComplaintMessage, getComplaintState } from "@/lib/whatsapp-complaints-handler"
+import { processComplaintMessage, getComplaintState } from "@/lib/whatsapp-complaints-handler"
 
 const mensagensProcessadas = new Set<string>()
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
@@ -242,6 +242,9 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
   try {
     console.log("[v0] Iniciando processamento IA para:", mensagem)
 
+    const intencao = await classificarIntencao(mensagem, telefone)
+    console.log("[v0] Intenção detectada:", intencao)
+
     const complaintState = await getComplaintState(telefone)
 
     if (complaintState) {
@@ -272,10 +275,8 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
       }
     }
 
-    const isComplaintDetected = detectComplaint(mensagem)
-
-    if (isComplaintDetected && !complaintState) {
-      console.log("[v0] Palavras de reclamação detectadas, oferecendo ajuda...")
+    if (intencao === "RECLAMAR" && !complaintState) {
+      console.log("[v0] Intenção de reclamação detectada, oferecendo ajuda...")
 
       const { data: conversa } = await supabase
         .from("whatsapp_conversas")
@@ -292,30 +293,7 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
       }
     }
 
-    const { data: mensagensAnteriores } = await supabase
-      .from("whatsapp_mensagens")
-      .select("id")
-      .eq(
-        "conversa_id",
-        (await supabase.from("whatsapp_conversas").select("id").eq("cliente_telefone", telefone).single()).data?.id ||
-          "",
-      )
-      .limit(2)
-
-    const isPrimeiraInteracao = !mensagensAnteriores || mensagensAnteriores.length <= 1
-    console.log("[v0] É primeira interação?", isPrimeiraInteracao)
-
-    const clientePediuMenu =
-      /cardápio|cardapio|menu|ver.*produtos|ver.*opções|ver.*opcoes|o que.*tem|quais.*produtos|mostrar.*cardápio|mostrar.*cardapio|mostrar.*menu|quero.*ver.*cardápio|quero.*ver.*cardapio|quero.*ver.*menu/i.test(
-        mensagem,
-      )
-    console.log("[v0] Cliente pediu menu?", clientePediuMenu)
-
-    const isOrderTracking = /rastreio|rastrear|pedido|acompanhar|status.*pedido|onde.*está|número.*pedido/i.test(
-      mensagem,
-    )
-
-    if (isOrderTracking) {
+    if (intencao === "CONSULTAR_PEDIDO") {
       console.log("[v0] Detectado: pergunta sobre rastreamento de pedido")
 
       const numeroPedidoMatch = mensagem.match(/#?(\d{4,6})/)
@@ -350,6 +328,22 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
         "Exemplo: #12345"
       )
     }
+
+    const { data: mensagensAnteriores } = await supabase
+      .from("whatsapp_mensagens")
+      .select("id")
+      .eq(
+        "conversa_id",
+        (await supabase.from("whatsapp_conversas").select("id").eq("cliente_telefone", telefone).single()).data?.id ||
+          "",
+      )
+      .limit(2)
+
+    const isPrimeiraInteracao = !mensagensAnteriores || mensagensAnteriores.length <= 1
+    console.log("[v0] É primeira interação?", isPrimeiraInteracao)
+
+    const clientePediuMenu = intencao === "VER_CARDAPIO"
+    console.log("[v0] Cliente pediu menu?", clientePediuMenu)
 
     const { cardapioTexto, produtosComImagem } = await buscarCardapioDoBanco()
 
@@ -504,6 +498,119 @@ async function processarMensagemComIA(mensagem: string, telefone: string): Promi
   } catch (error) {
     console.error("[v0] Erro ao processar IA:", error)
     return "Desculpe, estou com dificuldades técnicas no momento. Um atendente humano entrará em contato em breve! 🤖"
+  }
+}
+
+async function classificarIntencao(mensagem: string, telefone: string): Promise<string> {
+  try {
+    console.log("[v0] 🧠 Classificando intenção da mensagem:", mensagem)
+
+    // Buscar histórico recente para contexto
+    const { data: conversaData } = await supabase
+      .from("whatsapp_conversas")
+      .select("id")
+      .eq("cliente_telefone", telefone)
+      .single()
+
+    let historicoContexto = ""
+    if (conversaData) {
+      const { data: mensagensRecentes } = await supabase
+        .from("whatsapp_mensagens")
+        .select("tipo, conteudo")
+        .eq("conversa_id", conversaData.id)
+        .order("created_at", { ascending: false })
+        .limit(5)
+
+      if (mensagensRecentes && mensagensRecentes.length > 0) {
+        historicoContexto = "\n\nCONTEXTO DAS ÚLTIMAS MENSAGENS:\n"
+        mensagensRecentes.reverse().forEach((msg) => {
+          const tipo = msg.tipo === "cliente" ? "Cliente" : "Bot"
+          historicoContexto += `${tipo}: ${msg.conteudo}\n`
+        })
+      }
+    }
+
+    const promptClassificacao = `
+Você é um classificador de intenções para um sistema de atendimento de restaurante via WhatsApp.
+
+Analise a mensagem do cliente e classifique em UMA das seguintes intenções:
+
+1. FAZER_PEDIDO - Cliente quer fazer um novo pedido, pedir comida, encomendar algo
+   Exemplos: "quero fazer um pedido", "gostaria de pedir", "quero um hambúrguer", "vou querer 2 x-bacon"
+
+2. CONSULTAR_PEDIDO - Cliente quer saber o status, localização ou informações sobre um pedido JÁ FEITO
+   Exemplos: "onde está meu pedido?", "qual o status do pedido #12345?", "meu pedido já saiu?", "quanto tempo falta?"
+
+3. VER_CARDAPIO - Cliente quer ver o menu, cardápio, opções disponíveis
+   Exemplos: "qual o cardápio?", "o que vocês têm?", "quais são as opções?", "me mostra o menu"
+
+4. RECLAMAR - Cliente está insatisfeito, reclamando, reportando problema
+   Exemplos: "meu pedido veio errado", "está atrasado", "veio frio", "péssimo atendimento"
+
+5. DUVIDA_GERAL - Cliente tem dúvidas sobre horário, localização, formas de pagamento, etc.
+   Exemplos: "qual o horário?", "vocês aceitam cartão?", "onde fica?", "fazem entrega?"
+
+6. SAUDACAO - Cliente está apenas cumprimentando ou iniciando conversa
+   Exemplos: "oi", "olá", "bom dia", "boa tarde"
+
+7. OUTRO - Qualquer outra intenção que não se encaixe nas anteriores
+
+IMPORTANTE:
+- A palavra "pedido" pode aparecer em diferentes contextos!
+- "fazer pedido" = FAZER_PEDIDO
+- "consultar pedido", "status do pedido", "onde está meu pedido" = CONSULTAR_PEDIDO
+- Analise o CONTEXTO COMPLETO da mensagem, não apenas palavras isoladas
+- Use o histórico de mensagens para entender melhor a intenção
+- Seja preciso e considere a intenção PRINCIPAL do cliente
+
+${historicoContexto}
+
+MENSAGEM ATUAL DO CLIENTE:
+"${mensagem}"
+
+Responda APENAS com a intenção classificada (ex: FAZER_PEDIDO, CONSULTAR_PEDIDO, etc.).
+Não adicione explicações, apenas a classificação.
+`
+
+    const { text } = await generateText({
+      model: groq("llama-3.3-70b-versatile"),
+      messages: [
+        {
+          role: "system",
+          content: "Você é um classificador de intenções preciso. Responda apenas com a classificação.",
+        },
+        {
+          role: "user",
+          content: promptClassificacao,
+        },
+      ],
+      maxTokens: 50,
+      temperature: 0.3, // Temperatura baixa para respostas mais determinísticas
+    })
+
+    const intencao = text.trim().toUpperCase()
+    console.log("[v0] ✅ Intenção classificada:", intencao)
+
+    // Validar se a intenção é válida
+    const intencoesValidas = [
+      "FAZER_PEDIDO",
+      "CONSULTAR_PEDIDO",
+      "VER_CARDAPIO",
+      "RECLAMAR",
+      "DUVIDA_GERAL",
+      "SAUDACAO",
+      "OUTRO",
+    ]
+
+    if (intencoesValidas.includes(intencao)) {
+      return intencao
+    } else {
+      console.log("[v0] ⚠️ Intenção inválida retornada pela IA:", intencao)
+      return "OUTRO"
+    }
+  } catch (error) {
+    console.error("[v0] ❌ Erro ao classificar intenção:", error)
+    return "OUTRO"
   }
 }
 
