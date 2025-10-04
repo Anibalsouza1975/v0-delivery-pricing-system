@@ -23,6 +23,7 @@ import {
   MessageCircle,
   Database,
   RefreshCw,
+  User,
 } from "lucide-react"
 import { usePricing } from "@/components/pricing-context-supabase"
 import CustosFixosModule from "@/components/modules/custos-fixos"
@@ -47,6 +48,7 @@ import AjudaTutorialModule from "@/components/modules/ajuda-tutorial" // Added i
 import AutoAtendimentoWhatsAppModule from "@/components/modules/auto-atendimento-whatsapp" // Added import for WhatsApp module
 import DiagnosticoBDModule from "@/components/modules/diagnostico-bd" // Added import for database diagnostic module
 import GerenciamentoReclamacoesModule from "@/components/modules/gerenciamento-reclamacoes" // Added import for complaints module
+import ClientesModule from "@/components/modules/clientes" // Added import for ClientesModule
 import LoadingScreen from "@/components/loading-screen" // Added import for LoadingScreen
 import MigrationHelper from "@/components/migration-helper" // Added import for MigrationHelper
 
@@ -303,6 +305,13 @@ const modules = [
     icon: MessageCircle,
     color: "bg-rose-600",
   },
+  {
+    id: "clientes",
+    title: "Clientes",
+    description: "Visualize todos os clientes, busque por nome/telefone e veja o histórico completo de pedidos.",
+    icon: User,
+    color: "bg-purple-600",
+  },
 ]
 
 export default function DeliveryPricingSystem() {
@@ -412,6 +421,8 @@ export default function DeliveryPricingSystem() {
         return <MigrationHelper />
       case "gerenciamento-reclamacoes":
         return <GerenciamentoReclamacoesModule />
+      case "clientes":
+        return <ClientesModule />
       default:
         return (
           <Card>

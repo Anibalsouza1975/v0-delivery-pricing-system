@@ -6,6 +6,7 @@ import { createClient as createServerClient } from "@/lib/supabase/server"
 import { put } from "@vercel/blob"
 import { Buffer } from "buffer"
 import { processComplaintMessage, getComplaintState } from "@/lib/whatsapp-complaints-handler"
+import { buscarOuCriarCliente } from "@/lib/clientes-service"
 
 const mensagensProcessadas = new Set<string>()
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
@@ -792,6 +793,15 @@ async function enviarMensagemComBotao(
 async function salvarConversaNoBanco(telefone: string, mensagem: string, messageId: string) {
   try {
     console.log("[v0] Salvando conversa no banco:", telefone, mensagem)
+
+    const cliente = await buscarOuCriarCliente({
+      nome: telefone, // Será atualizado depois se necessário
+      telefone: telefone,
+    })
+
+    if (cliente) {
+      console.log("[v0] Cliente encontrado/criado:", cliente.id)
+    }
 
     // Verificar se já existe uma conversa para este telefone
     const { data: conversaExistente } = await supabase
